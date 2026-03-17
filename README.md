@@ -1,5 +1,4 @@
 # luna
-🌙 Luna — A free, private period &amp; cycle tracker. Log moods, symptoms and flow, see moon phases on every date, and get daily tarot &amp; lunar readings. All data stays on your device only. Install as an app — no account, no subscription, no app store needed.
 Luna 🌙 — Cycle & Mood Tracker
 A beautiful, free, and completely private period and cycle tracker for the one you love. Track your cycle, log moods and symptoms, monitor flow, and get daily mystic readings based on the lunar calendar and tarot — all from your phone's home screen with no app store, no account, and no subscription required. All data is stored privately on your device and is never shared with anyone. Built with love as a PWA (Progressive Web App) — just open in your browser and add to your home screen to install.
 Features:
