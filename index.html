@@ -1,0 +1,345 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna Mystic</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial, Helvetica, sans-serif;
+background:black;
+color:white;
+text-align:center;
+overflow-x:hidden;
+}
+
+/* stars */
+
+.stars{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:-1;
+}
+
+.star{
+position:absolute;
+width:2px;
+height:2px;
+background:white;
+border-radius:50%;
+animation:twinkle 4s infinite;
+}
+
+@keyframes twinkle{
+0%,100%{opacity:.2}
+50%{opacity:1}
+}
+
+/* crystal ball */
+
+.crystal-container{
+margin-top:40px;
+}
+
+.crystal-ball{
+font-size:80px;
+cursor:pointer;
+animation:float 3s ease-in-out infinite;
+filter:drop-shadow(0 0 15px violet);
+}
+
+@keyframes float{
+0%{transform:translateY(0)}
+50%{transform:translateY(-10px)}
+100%{transform:translateY(0)}
+}
+
+.crystal-active{
+animation:pulse 1.5s ease;
+}
+
+@keyframes pulse{
+0%{transform:scale(1)}
+50%{transform:scale(1.4)}
+100%{transform:scale(1)}
+}
+
+.card{
+background:#111;
+border-radius:14px;
+padding:20px;
+margin:20px auto;
+max-width:500px;
+box-shadow:0 0 15px rgba(255,255,255,.1);
+}
+
+.tarot-deck{
+display:flex;
+justify-content:center;
+gap:6px;
+margin:20px;
+}
+
+.tarot-card{
+width:60px;
+height:100px;
+border-radius:10px;
+background:linear-gradient(145deg,#2b1f3a,#120a1d);
+border:2px solid #a88cff;
+}
+
+.shuffle .tarot-card{
+animation:shuffle .8s infinite;
+}
+
+@keyframes shuffle{
+0%{transform:rotate(-10deg)}
+50%{transform:rotate(10deg)}
+100%{transform:rotate(-10deg)}
+}
+
+.reveal{
+animation:reveal .7s ease forwards;
+}
+
+@keyframes reveal{
+0%{transform:scale(.6) rotateY(90deg);opacity:0}
+100%{transform:scale(1.1) rotateY(0);opacity:1}
+}
+
+.icon{
+font-size:40px;
+margin:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Luna Mystic</h1>
+
+<div class="stars" id="stars"></div>
+
+<div class="crystal-container">
+<div class="crystal-ball" id="crystalBall">🔮</div>
+<p>Tap the crystal ball to reveal today's reading</p>
+</div>
+
+<div class="tarot-deck" id="tarotDeck">
+<div class="tarot-card"></div>
+<div class="tarot-card"></div>
+<div class="tarot-card"></div>
+<div class="tarot-card"></div>
+<div class="tarot-card"></div>
+</div>
+
+<div class="card">
+<h2 id="moonPhaseName">Moon</h2>
+<div class="icon" id="moonIcon">🌙</div>
+<p id="moonBody"></p>
+</div>
+
+<div class="card">
+<h2>Astrology</h2>
+<p id="astroBody"></p>
+</div>
+
+<div class="card">
+<h2>Tarot</h2>
+<div class="icon" id="tarotIcon">🃏</div>
+<p id="tarotBody"></p>
+</div>
+
+<div class="card">
+<h2>Daily Oracle</h2>
+<p id="oracle"></p>
+</div>
+
+<script>
+
+/* star field */
+
+function createStars(){
+
+const container=document.getElementById("stars");
+
+for(let i=0;i<120;i++){
+
+const star=document.createElement("div");
+star.className="star";
+
+star.style.left=Math.random()*100+"%";
+star.style.top=Math.random()*100+"%";
+star.style.animationDelay=Math.random()*4+"s";
+
+container.appendChild(star);
+
+}
+
+}
+
+createStars();
+
+/* moon phase */
+
+function moonPhase(dateString){
+
+const date=new Date(dateString);
+const lp=2551443;
+const newMoon=new Date("2000-01-06T18:14:00Z").getTime();
+
+const phase=((date.getTime()-newMoon)/1000)%lp;
+const index=Math.floor((phase/lp)*8);
+
+const phases=[
+{name:"New Moon",icon:"🌑"},
+{name:"Waxing Crescent",icon:"🌒"},
+{name:"First Quarter",icon:"🌓"},
+{name:"Waxing Gibbous",icon:"🌔"},
+{name:"Full Moon",icon:"🌕"},
+{name:"Waning Gibbous",icon:"🌖"},
+{name:"Last Quarter",icon:"🌗"},
+{name:"Waning Crescent",icon:"🌘"}
+];
+
+return phases[index];
+
+}
+
+/* tarot */
+
+const TAROT=[
+"The Fool","The Magician","The High Priestess","The Empress","The Emperor",
+"The Hierophant","The Lovers","The Chariot","Strength","The Hermit",
+"Wheel of Fortune","Justice","The Hanged Man","Death","Temperance",
+"The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World"
+];
+
+/* zodiac */
+
+function zodiacSign(date){
+
+const d=new Date(date);
+const day=d.getDate();
+const month=d.getMonth()+1;
+
+const signs=[
+["Capricorn",1,19],["Aquarius",2,18],["Pisces",3,20],
+["Aries",4,19],["Taurus",5,20],["Gemini",6,20],
+["Cancer",7,22],["Leo",8,22],["Virgo",9,22],
+["Libra",10,22],["Scorpio",11,21],["Sagittarius",12,21],
+["Capricorn",12,31]
+];
+
+for(let i=0;i<signs.length;i++){
+
+let s=signs[i];
+if(month===s[1] && day<=s[2]) return s[0];
+
+}
+
+}
+
+/* luck */
+
+function luckyEnergy(seed){
+
+const colours=["Silver","Gold","Indigo","Emerald","Crimson","Violet","Amber","Rose","Sapphire"];
+
+return{
+number:(seed%9)+1,
+colour:colours[seed%colours.length]
+};
+
+}
+
+/* oracle */
+
+const ORACLE=[
+"The universe quietly aligns in your favour.",
+"A hidden opportunity approaches.",
+"Trust your intuition today.",
+"A moment of clarity will arrive.",
+"Letting go creates space for growth."
+];
+
+function dailyOracle(seed){
+return ORACLE[seed%ORACLE.length];
+}
+
+/* tarot spread */
+
+function drawSpread(seed){
+
+return{
+past:TAROT[seed%TAROT.length],
+present:TAROT[(seed+7)%TAROT.length],
+future:TAROT[(seed+13)%TAROT.length]
+};
+
+}
+
+/* main reading */
+
+function generateReading(){
+
+const deck=document.getElementById("tarotDeck");
+deck.classList.add("shuffle");
+
+setTimeout(()=>{
+
+deck.classList.remove("shuffle");
+
+const today=new Date().toISOString().slice(0,10);
+const seed=today.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+
+const moon=moonPhase(today);
+const zodiac=zodiacSign(today);
+const spread=drawSpread(seed);
+const luck=luckyEnergy(seed);
+
+document.getElementById("moonIcon").textContent=moon.icon;
+document.getElementById("moonPhaseName").textContent=moon.name;
+document.getElementById("moonBody").textContent="The moon encourages reflection and inner awareness.";
+
+document.getElementById("astroBody").textContent=
+"Zodiac: "+zodiac+" | Lucky number: "+luck.number+" | Lucky colour: "+luck.colour;
+
+document.getElementById("tarotBody").textContent=
+"Past: "+spread.past+" | Present: "+spread.present+" | Future: "+spread.future;
+
+document.getElementById("oracle").textContent=dailyOracle(seed);
+
+const icon=document.getElementById("tarotIcon");
+icon.classList.remove("reveal");
+void icon.offsetWidth;
+icon.classList.add("reveal");
+
+},1500);
+
+}
+
+/* crystal trigger */
+
+document.getElementById("crystalBall").addEventListener("click",function(){
+
+this.classList.remove("crystal-active");
+void this.offsetWidth;
+this.classList.add("crystal-active");
+
+generateReading();
+
+});
+
+</script>
+
+</body>
+</html>
