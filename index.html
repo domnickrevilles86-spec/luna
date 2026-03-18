@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Luna — Cycle & Mood Tracker</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c4637a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Luna">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --rose:       #c4637a;
+    --rose-light: #e8a0b0;
+    --rose-pale:  #f5dde3;
+    --mauve:      #7b5e7b;
+    --cream:      #fdf8f4;
+    --parchment:  #f0e8df;
+    --ink:        #2d2028;
+    --muted:      #9e8a94;
+    --white:      #ffffff;
+    --period:     #c4637a;
+    --fertile:    #7ba68a;
+    --ovulation:  #e8a83d;
+    --pms:        #8e7bb5;
+    --today-ring: #c4637a;
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG texture */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 10%, #f0d8df55 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 90% 80%, #ddd0ea44 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 100px; }
+
+  /* Header */
+  header {
+    padding: 36px 24px 16px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem; font-weight: 300; letter-spacing: 0.04em;
+    color: var(--rose); line-height: 1;
+  }
+  .brand-tagline { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+  .header-phase {
+    text-align: right;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem; color: var(--mauve); font-style: italic;
+  }
+
+  /* Phase strip */
+  .phase-strip {
+    display: flex; gap: 8px; padding: 0 24px 20px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .phase-strip::-webkit-scrollbar { display: none; }
+  .phase-tag {
+    flex-shrink: 0;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 0.72rem; letter-spacing: 0.08em; font-weight: 500;
+    cursor: default;
+  }
+  .phase-tag.period   { background: #f5dde3; color: var(--rose); }
+  .phase-tag.fertile  { background: #ddeee3; color: #4a7a58; }
+  .phase-tag.ovulation{ background: #fdefd5; color: #a06b10; }
+  .phase-tag.pms      { background: #e8e2f5; color: var(--mauve); }
+  .phase-tag.luteal   { background: #e8e8f0; color: #5a5472; }
+
+  /* Section titles */
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem; font-weight: 400; color: var(--ink);
+    padding: 0 24px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(to right, var(--rose-light), transparent);
+  }
+
+  /* Calendar */
+  .calendar-wrap { padding: 0 24px; margin-bottom: 28px; }
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cal-month {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem; font-weight: 400; color: var(--ink);
+  }
+  .cal-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--rose-light); background: var(--white);
+    color: var(--rose); font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .cal-btn:hover { background: var(--rose-pale); }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-dow {
+    text-align: center; font-size: 0.65rem; letter-spacing: 0.1em;
+    color: var(--muted); padding-bottom: 6px; text-transform: uppercase;
+  }
+  .cal-day {
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 0.82rem; cursor: pointer;
+    position: relative; transition: all 0.15s;
+    user-select: none; gap: 0px;
+  }
+  .cal-moon { font-size: 0.45rem; line-height: 1; opacity: 0.75; }
+  .cal-day:hover:not(.empty) { background: var(--rose-pale); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.today {
+    box-shadow: 0 0 0 2px var(--today-ring);
+    font-weight: 500;
+  }
+  .cal-day.period-day   { background: #f5dde3; color: var(--rose); font-weight: 500; }
+  .cal-day.fertile-day  { background: #ddeee3; color: #3a6a48; }
+  .cal-day.ovulation-day{ background: #fdefd5; color: #a06b10; font-weight: 500; }
+  .cal-day.pms-day      { background: #e8e2f5; color: var(--mauve); }
+  .cal-day.logged-mood::after {
+    content: '';
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--mauve);
+  }
+  .cal-day.selected-day {
+    box-shadow: 0 0 0 2px var(--ink);
+  }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    padding: 8px 24px 0;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--muted); }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  /* Log panel */
+  .log-panel {
+    margin: 24px 24px 0;
+    background: var(--white);
+    border-radius: 20px;
+    border: 1px solid var(--rose-pale);
+    overflow: hidden;
+    box-shadow: 0 4px 24px #c4637a12;
+  }
+  .log-panel-header {
+    background: linear-gradient(135deg, var(--rose-pale), #ede4f0);
+    padding: 16px 20px 12px;
+  }
+  .log-panel-date {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem; color: var(--ink);
+  }
+  .log-panel-body { padding: 18px 20px; }
+
+  /* Toggle row */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--parchment);
+  }
+  .toggle-row:last-of-type { border-bottom: none; }
+  .toggle-label { font-size: 0.88rem; color: var(--ink); }
+  .toggle-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+
+  /* Toggle switch */
+  .toggle {
+    position: relative; width: 42px; height: 24px; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; cursor: pointer;
+    background: var(--parchment); border-radius: 24px;
+    transition: background 0.2s;
+  }
+  .slider::before {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; border-radius: 50%;
+    left: 3px; top: 3px; background: white;
+    box-shadow: 0 1px 4px #0002;
+    transition: transform 0.2s;
+  }
+  input:checked + .slider { background: var(--rose); }
+  input:checked + .slider::before { transform: translateX(18px); }
+
+  /* Mood selector */
+  .mood-section { margin-top: 16px; }
+  .mood-label { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  .mood-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mood-btn {
+    padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--parchment);
+    background: var(--cream); color: var(--muted);
+    font-size: 0.8rem; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+  }
+  .mood-btn:hover { border-color: var(--rose-light); color: var(--rose); }
+  .mood-btn.active {
+    background: var(--rose-pale); border-color: var(--rose);
+    color: var(--rose); font-weight: 500;
+  }
+
+  /* Symptoms */
+  .symptom-section { margin-top: 16px; }
+  .symptom-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .symptom-btn {
+    padding: 6px 12px; border-radius: 16px; border: 1.5px solid var(--parchment);
+    background: var(--cream); color: var(--muted);
+    font-size: 0.75rem; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .symptom-btn:hover { border-color: var(--mauve); color: var(--mauve); }
+  .symptom-btn.active {
+    background: #e8e2f5; border-color: var(--mauve);
+    color: var(--mauve);
+  }
+
+  /* Flow intensity */
+  .flow-section { margin-top: 16px; }
+  .flow-btns { display: flex; gap: 8px; }
+  .flow-btn {
+    flex: 1; padding: 10px 6px; border-radius: 14px;
+    border: 1.5px solid var(--parchment);
+    background: var(--cream); color: var(--muted);
+    font-size: 0.72rem; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.18s; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .flow-btn:hover { border-color: var(--rose-light); background: var(--rose-pale); }
+  .flow-btn.active { background: var(--rose-pale); border-color: var(--rose); color: var(--rose); }
+  .flow-drops { display: flex; gap: 2px; justify-content: center; }
+  .drop {
+    width: 14px; height: 18px;
+    background: var(--parchment);
+    clip-path: polygon(50% 0%, 80% 40%, 100% 65%, 85% 90%, 15% 90%, 0% 65%, 20% 40%);
+    transition: background 0.18s;
+  }
+  .flow-btn.active .drop  { background: var(--rose); }
+  .flow-btn:hover .drop   { background: var(--rose-light); }
+  .drop.dim { opacity: 0.25; }
+
+  /* Notes */
+  .notes-section { margin-top: 16px; }
+  .notes-input {
+    width: 100%; border: 1.5px solid var(--parchment);
+    border-radius: 12px; padding: 10px 14px;
+    font-size: 0.82rem; font-family: 'DM Sans', sans-serif;
+    color: var(--ink); background: var(--cream);
+    resize: none; outline: none; line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+  .notes-input:focus { border-color: var(--rose-light); }
+  .notes-input::placeholder { color: var(--muted); }
+
+  /* Save button */
+  .save-btn {
+    margin-top: 18px; width: 100%;
+    padding: 13px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--rose), var(--mauve));
+    color: white; border: none; font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; font-weight: 500; cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 4px 16px #c4637a30;
+  }
+  .save-btn:hover { opacity: 0.9; }
+  .save-btn:active { transform: scale(0.98); }
+
+  /* Stats section */
+  .stats-wrap { padding: 0 24px; margin-bottom: 28px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card {
+    background: var(--white); border-radius: 16px;
+    padding: 16px; border: 1px solid var(--parchment);
+    box-shadow: 0 2px 12px #0000040a;
+  }
+  .stat-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem; font-weight: 300; color: var(--rose); line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; }
+
+  /* Cycle prediction bar */
+  .cycle-bar-wrap {
+    margin: 0 24px 28px;
+    background: var(--white); border-radius: 16px;
+    padding: 18px; border: 1px solid var(--parchment);
+  }
+  .cycle-bar-title {
+    font-size: 0.75rem; color: var(--muted);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px;
+  }
+  .cycle-bar {
+    display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px;
+  }
+  .cycle-seg {
+    height: 100%; border-radius: 3px; transition: flex 0.3s;
+  }
+  .cycle-bar-legend {
+    display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .cbl-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--muted); }
+  .cbl-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--ink); color: white;
+    padding: 11px 22px; border-radius: 24px; font-size: 0.82rem;
+    box-shadow: 0 6px 24px #0004;
+    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+    opacity: 0; z-index: 100; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Nav */
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--white); border-top: 1px solid var(--rose-pale);
+    display: flex; justify-content: space-around; padding: 10px 0 16px;
+    z-index: 10;
+  }
+  .nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 0.62rem; color: var(--muted); cursor: pointer;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    background: none; border: none; font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s;
+  }
+  .nav-btn.active { color: var(--rose); }
+  .nav-btn svg { width: 20px; height: 20px; }
+
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Insights */
+  .insight-list { padding: 0 24px; display: flex; flex-direction: column; gap: 12px; }
+  .insight-card {
+    background: var(--white); border-radius: 16px;
+    padding: 16px 18px; border: 1px solid var(--parchment);
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .insight-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .insight-title { font-size: 0.88rem; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+  .insight-desc  { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+  /* Settings */
+  .settings-wrap { padding: 0 24px; }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid var(--parchment);
+  }
+  .setting-label { font-size: 0.9rem; color: var(--ink); }
+  .setting-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .setting-input {
+    width: 60px; border: 1.5px solid var(--parchment); border-radius: 8px;
+    padding: 5px 8px; font-size: 0.9rem; text-align: center;
+    font-family: 'DM Sans', sans-serif; color: var(--ink);
+    background: var(--cream); outline: none;
+  }
+  .setting-input:focus { border-color: var(--rose-light); }
+
+  .period-start-btn {
+    padding: 8px 16px; border-radius: 12px;
+    background: var(--rose-pale); border: 1.5px solid var(--rose);
+    color: var(--rose); font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem; cursor: pointer; transition: background 0.15s;
+  }
+  .period-start-btn:hover { background: #eecdd5; }
+
+  /* Charts */
+  .chart-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 16px 16px 12px;
+    border: 1px solid var(--parchment);
+    box-shadow: 0 2px 12px #0000040a;
+    height: 100%;
+  }
+  .chart-title-row {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem; color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .chart-subtitle {
+    font-size: 0.72rem; color: var(--muted);
+    letter-spacing: 0.06em; margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .chart-empty {
+    text-align: center; padding: 24px 0;
+    font-size: 0.88rem; color: var(--muted);
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+  }
+  canvas { width: 100% !important; }
+
+  /* Carousel */
+  .carousel-wrap {
+    padding: 0 24px;
+    overflow: hidden;
+  }
+  .carousel-track {
+    display: flex;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+    will-change: transform;
+  }
+  .carousel-slide {
+    min-width: 100%;
+    padding: 0 2px 4px;
+  }
+  .carousel-dots {
+    display: flex; justify-content: center; gap: 6px;
+    margin-top: 12px;
+  }
+  .carousel-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--parchment); cursor: pointer;
+    transition: all 0.2s;
+  }
+  .carousel-dot.active {
+    background: var(--rose); width: 18px; border-radius: 3px;
+  }
+
+  /* Mystic tab */
+  .mystic-card {
+    margin: 0 24px 14px;
+    background: var(--white);
+    border-radius: 20px;
+    border: 1px solid var(--parchment);
+    overflow: hidden;
+    box-shadow: 0 2px 16px #7b5e7b0a;
+  }
+  .mystic-card-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px 12px;
+    background: linear-gradient(135deg, #f0e8f8, #f5dde3);
+    border-bottom: 1px solid var(--parchment);
+  }
+  .mystic-icon { font-size: 2rem; flex-shrink: 0; }
+  .mystic-card-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--ink); font-weight: 400; }
+  .mystic-card-sub   { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+  .mystic-body {
+    padding: 14px 18px 16px;
+    font-size: 0.85rem; color: var(--ink); line-height: 1.7;
+    font-family: 'Cormorant Garamond', serif; font-size: 1rem;
+    min-height: 60px;
+  }
+  .mystic-loading {
+    display: inline-block; opacity: 0.5;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .view.active > * { animation: fadeIn 0.3s ease both; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-name">Luna</div>
+      <div class="brand-tagline">Cycle &amp; Mood Tracker</div>
+    </div>
+    <div class="header-phase" id="headerPhase">Loading…</div>
+  </header>
+
+  <!-- ===== HOME VIEW ===== -->
+  <div class="view active" id="view-home">
+
+    <div class="phase-strip" id="phaseStrip"></div>
+
+    <div class="section-title">This Month</div>
+
+    <div class="calendar-wrap">
+      <div class="cal-nav">
+        <button class="cal-btn" id="prevMonth">&#8249;</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-btn" id="nextMonth">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f5dde3;border:1px solid #c4637a"></div> Period</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ddeee3;border:1px solid #7ba68a"></div> Fertile</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdefd5;border:1px solid #e8a83d"></div> Ovulation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e8e2f5;border:1px solid #8e7bb5"></div> PMS</div>
+    </div>
+
+    <!-- Log Panel -->
+    <div class="log-panel" id="logPanel">
+      <div class="log-panel-header">
+        <div class="log-panel-date" id="logPanelDate">Today</div>
+        <div id="logPanelMoon" style="font-size:0.78rem;color:var(--mauve);margin-top:3px;font-family:'Cormorant Garamond',serif;font-style:italic;"></div>
+      </div>
+      <div class="log-panel-body">
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Period</div>
+            <div class="toggle-sub">Mark today as a period day</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="togglePeriod"><span class="slider"></span></label>
+        </div>
+
+        <div id="flowSection" class="flow-section" style="display:none">
+          <div class="mood-label">Flow intensity</div>
+          <div class="flow-btns">
+            <button class="flow-btn" data-flow="light">
+              <div class="flow-drops">
+                <div class="drop"></div>
+                <div class="drop dim"></div>
+                <div class="drop dim"></div>
+              </div>
+              Light
+            </button>
+            <button class="flow-btn" data-flow="medium">
+              <div class="flow-drops">
+                <div class="drop"></div>
+                <div class="drop"></div>
+                <div class="drop dim"></div>
+              </div>
+              Normal
+            </button>
+            <button class="flow-btn" data-flow="heavy">
+              <div class="flow-drops">
+                <div class="drop"></div>
+                <div class="drop"></div>
+                <div class="drop"></div>
+              </div>
+              Heavy
+            </button>
+          </div>
+        </div>
+
+        <div class="mood-section">
+          <div class="mood-label">How are you feeling?</div>
+          <div class="mood-grid" id="moodGrid"></div>
+        </div>
+
+        <div class="symptom-section">
+          <div class="mood-label">Symptoms</div>
+          <div class="symptom-grid" id="symptomGrid"></div>
+        </div>
+
+        <div class="notes-section">
+          <div class="mood-label">Notes</div>
+          <textarea class="notes-input" id="notesInput" rows="2" placeholder="Anything to remember about today…"></textarea>
+        </div>
+
+        <button class="save-btn" id="saveBtn">Save today's log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STATS VIEW ===== -->
+  <div class="view" id="view-stats">
+    <div class="section-title" style="padding-top:16px">Your Cycle</div>
+    <div class="stats-wrap">
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+
+    <div class="section-title">Cycle Breakdown</div>
+    <div class="cycle-bar-wrap">
+      <div class="cycle-bar-title">Current cycle phase distribution</div>
+      <div class="cycle-bar" id="cycleBar"></div>
+      <div class="cycle-bar-legend">
+        <div class="cbl-item"><div class="cbl-dot" style="background:#f5dde3"></div> Period</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#e8e8f0"></div> Follicular</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#fdefd5"></div> Ovulation</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#ddeee3"></div> Fertile</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#e8e2f5"></div> Luteal</div>
+      </div>
+    </div>
+
+    <div class="section-title">Charts</div>
+
+    <!-- Swipeable chart carousel -->
+    <div class="carousel-wrap">
+      <div class="carousel-track" id="carouselTrack">
+
+        <div class="carousel-slide">
+          <div class="chart-card">
+            <div class="chart-title-row">😊 Mood Patterns</div>
+            <div class="chart-subtitle">Most logged moods overall</div>
+            <canvas id="moodBarChart" height="160"></canvas>
+            <div id="moodBarEmpty" class="chart-empty" style="display:none">Log moods to see patterns here 😊</div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="chart-card">
+            <div class="chart-title-row">🌙 Mood by Phase</div>
+            <div class="chart-subtitle">How you feel in each cycle phase</div>
+            <canvas id="moodPhaseChart" height="160"></canvas>
+            <div id="moodPhaseEmpty" class="chart-empty" style="display:none">Log more data to see phase patterns 🌙</div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="chart-card">
+            <div class="chart-title-row">🩸 Flow History</div>
+            <div class="chart-subtitle">Flow intensity over recent periods</div>
+            <canvas id="flowChart" height="160"></canvas>
+            <div id="flowEmpty" class="chart-empty" style="display:none">Log flow during your period to see history 🩸</div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="chart-card">
+            <div class="chart-title-row">💊 Top Symptoms</div>
+            <div class="chart-subtitle">Most frequently logged symptoms</div>
+            <canvas id="symptomChart" height="160"></canvas>
+            <div id="symptomEmpty" class="chart-empty" style="display:none">Log symptoms to see patterns here 💊</div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="chart-card">
+            <div class="chart-title-row">🌕 Mood vs Moon</div>
+            <div class="chart-subtitle">Emotional energy across the lunar cycle</div>
+            <canvas id="moonMoodChart" height="160"></canvas>
+            <div id="moonMoodEmpty" class="chart-empty" style="display:none">Log more data to see lunar patterns 🌕</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dot indicators -->
+      <div class="carousel-dots" id="carouselDots"></div>
+    </div>
+
+    <div class="section-title" style="margin-top:8px">Recent Log History</div>
+    <div class="insight-list" id="moodHistory"></div>
+  </div>
+
+  <!-- ===== INSIGHTS VIEW ===== -->
+  <div class="view" id="view-insights">
+    <div class="section-title" style="padding-top:16px">Insights</div>
+    <div class="insight-list" id="insightList"></div>
+  </div>
+
+  <!-- ===== MYSTIC VIEW ===== -->
+  <div class="view" id="view-mystic">
+    <div class="section-title" style="padding-top:16px">✨ Mystic</div>
+
+    <!-- Date picker -->
+    <div style="padding:0 24px 16px;display:flex;align-items:center;gap:10px;">
+      <label style="font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Reading for</label>
+      <input type="date" id="mysticDate" class="setting-input" style="width:auto;flex:1;">
+      <button class="period-start-btn" id="mysticReadBtn" onclick="generateReading()">Read ✦</button>
+    </div>
+
+    <!-- Moon card -->
+    <div class="mystic-card" id="moonCard">
+      <div class="mystic-card-header">
+        <span class="mystic-icon" id="moonIcon">🌕</span>
+        <div>
+          <div class="mystic-card-title" id="moonPhaseName">Full Moon</div>
+          <div class="mystic-card-sub">Lunar Phase</div>
+        </div>
+      </div>
+      <div class="mystic-body" id="moonBody">Tap "Read ✦" to receive your lunar reading.</div>
+    </div>
+
+    <!-- Astronomy card -->
+    <div class="mystic-card" id="astroCard">
+      <div class="mystic-card-header">
+        <span class="mystic-icon">🔭</span>
+        <div>
+          <div class="mystic-card-title">Astronomy</div>
+          <div class="mystic-card-sub">Celestial energy</div>
+        </div>
+      </div>
+      <div class="mystic-body" id="astroBody">Your celestial reading will appear here.</div>
+    </div>
+
+    <!-- Tarot card -->
+    <div class="mystic-card" id="tarotCard">
+      <div class="mystic-card-header">
+        <span class="mystic-icon" id="tarotIcon">🃏</span>
+        <div>
+          <div class="mystic-card-title" id="tarotName">Your Card</div>
+          <div class="mystic-card-sub">Daily Tarot</div>
+        </div>
+      </div>
+      <div class="mystic-body" id="tarotBody">Your tarot reading will appear here.</div>
+    </div>
+
+    <div style="padding:8px 24px 24px;font-size:0.68rem;color:var(--muted);text-align:center;line-height:1.6;">
+      Readings are generated by AI for reflection and fun. Take what resonates, leave what doesn't. 🌙
+    </div>
+  </div>
+
+
+  <div class="view" id="view-settings">
+    <div class="section-title" style="padding-top:16px">Settings</div>
+    <div class="settings-wrap">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Cycle length</div>
+          <div class="setting-sub">Average days per cycle</div>
+        </div>
+        <input class="setting-input" type="number" id="settingCycleLen" min="20" max="45" value="28">
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Period length</div>
+          <div class="setting-sub">Average days of bleeding</div>
+        </div>
+        <input class="setting-input" type="number" id="settingPeriodLen" min="2" max="10" value="5">
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Last period started</div>
+          <div class="setting-sub">First day of your last period</div>
+        </div>
+        <input type="date" id="settingLastPeriod" class="setting-input" style="width:auto">
+      </div>
+      <div class="setting-row" style="border-bottom:none; margin-top:8px">
+        <div></div>
+        <button class="period-start-btn" id="saveSettings">Save settings</button>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:16px">Data</div>
+    <div class="settings-wrap">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Export data</div>
+          <div class="setting-sub">Download your logs as JSON</div>
+        </div>
+        <button class="period-start-btn" id="exportBtn">Export</button>
+      </div>
+      <div class="setting-row" style="border-bottom:none">
+        <div>
+          <div class="setting-label">Clear all data</div>
+          <div class="setting-sub">Permanently delete all logs</div>
+        </div>
+        <button class="period-start-btn" id="clearBtn" style="border-color:#c0392b;color:#c0392b;background:#fdecea">Clear</button>
+      </div>
+    </div>
+
+    <div style="padding:24px;font-size:0.72rem;color:var(--muted);line-height:1.6;">
+      🔒 All data is stored privately on your device only. Nothing is ever sent to any server.
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <button class="nav-btn active" data-view="home" onclick="switchView('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    Today
+  </button>
+  <button class="nav-btn" data-view="stats" onclick="switchView('stats',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+    Stats
+  </button>
+  <button class="nav-btn" data-view="insights" onclick="switchView('insights',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2 5.5-3 7H8c-1-1.5-3-3.5-3-7a7 7 0 0 1 7-7z"/><path d="M9 21h6m-3-3v3"/></svg>
+    Insights
+  </button>
+  <button class="nav-btn" data-view="mystic" onclick="switchView('mystic',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Mystic
+  </button>
+  <button class="nav-btn" data-view="settings" onclick="switchView('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE & STORAGE ───────────────────────────────────────────────────────
+const MOODS = [
+  {id:'happy',    emoji:'😊', label:'Happy'},
+  {id:'calm',     emoji:'😌', label:'Calm'},
+  {id:'energetic',emoji:'⚡', label:'Energetic'},
+  {id:'anxious',  emoji:'😰', label:'Anxious'},
+  {id:'sad',      emoji:'😔', label:'Sad'},
+  {id:'irritable',emoji:'😠', label:'Irritable'},
+  {id:'tired',    emoji:'😴', label:'Tired'},
+  {id:'moody',    emoji:'🌊', label:'Moody'},
+  {id:'horny',    emoji:'😈', label:'Frisky'},
+  {id:'hungry',   emoji:'🍕', label:'Hungry'},
+  {id:'thirsty',  emoji:'🥤', label:'Thirsty'},
+];
+const SYMPTOMS = [
+  'Cramps','Bloating','Headache','Back pain','Breast tenderness',
+  'Nausea','Acne','Insomnia','Fatigue','Spotting','Discharge','Hot flashes'
+];
+
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+let settings = load('luna_settings', {
+  cycleLen: 28,
+  periodLen: 5,
+  lastPeriod: todayStr(-28)
+});
+let logs = load('luna_logs', {}); // keyed by YYYY-MM-DD
+
+let calViewDate = new Date();
+let selectedDate = todayStr(0);
+let selectedMoods = new Set();
+let selectedSymptoms = new Set();
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function todayStr(offsetDays = 0) {
+  const d = new Date(); d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0,10);
+}
+function dateStr(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function parseDate(s) { const p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+function diffDays(a, b) { return Math.round((parseDate(b)-parseDate(a))/(86400000)); }
+
+function getCyclePhase(dateS) {
+  const last = settings.lastPeriod;
+  if (!last) return null;
+  const d = diffDays(last, dateS);
+  if (d < 0 && d > -settings.cycleLen * 3) {
+    // look back up to 3 cycles
+    let shift = d;
+    while (shift < 0) shift += settings.cycleLen;
+    return phaseFor(shift);
+  }
+  let pos = d % settings.cycleLen;
+  if (pos < 0) pos += settings.cycleLen;
+  return phaseFor(pos);
+}
+function phaseFor(pos) {
+  const cl = settings.cycleLen, pl = settings.periodLen;
+  const ovDay  = Math.round(cl - 14);
+  const fertStart = ovDay - 5;
+  const pmsStart  = ovDay + 2;
+  if (pos < pl)                    return 'period';
+  if (pos >= fertStart && pos < ovDay)   return 'fertile';
+  if (pos >= ovDay && pos < ovDay+2)     return 'ovulation';
+  if (pos >= pmsStart)             return 'pms';
+  return 'follicular';
+}
+
+function phaseLabel(p) {
+  return {period:'🩸 Period',fertile:'🌿 Fertile window',ovulation:'✨ Ovulation',pms:'🌙 PMS phase',follicular:'🌱 Follicular phase'}[p] || p;
+}
+
+// ─── CALENDAR ──────────────────────────────────────────────────────────────
+// ─── MOON PHASE ────────────────────────────────────────────────────────────
+function getMoonPhase(dateS) {
+  const d = parseDate(dateS);
+  // Known new moon reference: Jan 6 2000
+  const ref = new Date(2000, 0, 6);
+  const diff = (d - ref) / 86400000;
+  const cycle = 29.53058867;
+  let phase = ((diff % cycle) + cycle) % cycle;
+  if (phase < 1.85)   return {emoji:'🌑', name:'New Moon'};
+  if (phase < 5.54)   return {emoji:'🌒', name:'Waxing Crescent'};
+  if (phase < 9.22)   return {emoji:'🌓', name:'First Quarter'};
+  if (phase < 12.91)  return {emoji:'🌔', name:'Waxing Gibbous'};
+  if (phase < 16.61)  return {emoji:'🌕', name:'Full Moon'};
+  if (phase < 20.30)  return {emoji:'🌖', name:'Waning Gibbous'};
+  if (phase < 23.99)  return {emoji:'🌗', name:'Last Quarter'};
+  if (phase < 27.68)  return {emoji:'🌘', name:'Waning Crescent'};
+  return {emoji:'🌑', name:'New Moon'};
+}
+
+function renderCal() {
+  const y = calViewDate.getFullYear(), m = calViewDate.getMonth();
+  document.getElementById('calMonth').textContent =
+    new Date(y, m, 1).toLocaleDateString('en', {month:'long', year:'numeric'});
+
+  const grid = document.getElementById('calGrid');
+  const dows = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  grid.innerHTML = dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const todS = todayStr(0);
+
+  for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = dateStr(y, m, d);
+    const phase = getCyclePhase(ds);
+    const log = logs[ds];
+    let cls = 'cal-day';
+    if (phase === 'period')    cls += ' period-day';
+    else if (phase === 'fertile')   cls += ' fertile-day';
+    else if (phase === 'ovulation') cls += ' ovulation-day';
+    else if (phase === 'pms')       cls += ' pms-day';
+    if (log && (log.moods?.length || log.symptoms?.length)) cls += ' logged-mood';
+    if (ds === todS)        cls += ' today';
+    if (ds === selectedDate) cls += ' selected-day';
+    grid.innerHTML += `<div class="${cls}" data-date="${ds}" onclick="selectDay('${ds}')"><span>${d}</span><span class="cal-moon">${getMoonPhase(ds).emoji}</span></div>`;
+  }
+}
+
+function selectDay(ds) {
+  selectedDate = ds;
+  loadLogForDate(ds);
+  renderCal();
+  const d = parseDate(ds);
+  document.getElementById('logPanelDate').textContent =
+    ds === todayStr(0) ? 'Today' : d.toLocaleDateString('en', {weekday:'long', month:'long', day:'numeric'});
+  const moon = getMoonPhase(ds);
+  document.getElementById('logPanelMoon').textContent = `${moon.emoji} ${moon.name}`;
+}
+
+function loadLogForDate(ds) {
+  const log = logs[ds] || {};
+  document.getElementById('togglePeriod').checked = !!log.period;
+  document.getElementById('flowSection').style.display = log.period ? 'block' : 'none';
+  document.querySelectorAll('.flow-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.flow === log.flow);
+  });
+  selectedMoods = new Set(log.moods || []);
+  selectedSymptoms = new Set(log.symptoms || []);
+  document.getElementById('notesInput').value = log.notes || '';
+  renderMoodGrid();
+  renderSymptomGrid();
+}
+
+// ─── MOOD & SYMPTOM GRIDS ─────────────────────────────────────────────────
+function renderMoodGrid() {
+  document.getElementById('moodGrid').innerHTML = MOODS.map(m =>
+    `<button class="mood-btn${selectedMoods.has(m.id)?' active':''}" data-mood="${m.id}" onclick="toggleMood('${m.id}')">${m.emoji} ${m.label}</button>`
+  ).join('');
+}
+function renderSymptomGrid() {
+  document.getElementById('symptomGrid').innerHTML = SYMPTOMS.map(s =>
+    `<button class="symptom-btn${selectedSymptoms.has(s)?' active':''}" onclick="toggleSymptom('${s}')">${s}</button>`
+  ).join('');
+}
+function toggleMood(id) {
+  selectedMoods.has(id) ? selectedMoods.delete(id) : selectedMoods.add(id);
+  renderMoodGrid();
+}
+function toggleSymptom(s) {
+  selectedSymptoms.has(s) ? selectedSymptoms.delete(s) : selectedSymptoms.add(s);
+  renderSymptomGrid();
+}
+
+// ─── SAVE ──────────────────────────────────────────────────────────────────
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const isPeriod = document.getElementById('togglePeriod').checked;
+  const flow = [...document.querySelectorAll('.flow-btn.active')].map(b=>b.dataset.flow)[0] || null;
+  logs[selectedDate] = {
+    period: isPeriod, flow,
+    moods: [...selectedMoods],
+    symptoms: [...selectedSymptoms],
+    notes: document.getElementById('notesInput').value.trim()
+  };
+  save('luna_logs', logs);
+  // Update lastPeriod if period day logged for today or earlier
+  if (isPeriod && selectedDate <= todayStr(0)) {
+    // find earliest consecutive period day from selectedDate going back
+    settings.lastPeriod = selectedDate;
+    save('luna_settings', settings);
+  }
+  showToast('✓ Saved!');
+  renderCal();
+  renderPhaseStrip();
+  renderHeaderPhase();
+  renderStats();
+  renderInsights();
+});
+
+// ─── PERIOD TOGGLE ────────────────────────────────────────────────────────
+document.getElementById('togglePeriod').addEventListener('change', function() {
+  document.getElementById('flowSection').style.display = this.checked ? 'block' : 'none';
+});
+document.querySelectorAll('.flow-btn').forEach(b => {
+  b.addEventListener('click', function() {
+    document.querySelectorAll('.flow-btn').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ─── PHASE STRIP ──────────────────────────────────────────────────────────
+function renderPhaseStrip() {
+  const items = [];
+  const labels = {period:'🩸 Period',fertile:'🌿 Fertile',ovulation:'✨ Ovulation',pms:'🌙 PMS',follicular:'🌱 Follicular'};
+  for (let i = 0; i < 7; i++) {
+    const ds = todayStr(i);
+    const p = getCyclePhase(ds);
+    if (!p) continue;
+    const d = parseDate(ds);
+    const label = i===0 ? 'Today' : d.toLocaleDateString('en',{weekday:'short'});
+    items.push(`<div class="phase-tag ${p}">${label}: ${labels[p]||p}</div>`);
+  }
+  document.getElementById('phaseStrip').innerHTML = items.join('');
+}
+
+function renderHeaderPhase() {
+  const p = getCyclePhase(todayStr(0));
+  const labels = {period:'Period day',fertile:'Fertile window',ovulation:'Ovulation',pms:'PMS phase',follicular:'Follicular phase'};
+  const next = nextPeriodDays();
+  let txt = p ? (labels[p]||p) : '';
+  if (next !== null && p !== 'period') txt += ` · Next period in ${next}d`;
+  document.getElementById('headerPhase').textContent = txt;
+}
+
+function nextPeriodDays() {
+  const last = settings.lastPeriod;
+  if (!last) return null;
+  const today = todayStr(0);
+  const d = diffDays(last, today);
+  let pos = d % settings.cycleLen;
+  if (pos < 0) pos += settings.cycleLen;
+  return settings.cycleLen - pos;
+}
+
+// ─── CHARTS HELPER ────────────────────────────────────────────────────────
+function setupCanvas(el, h) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = el.parentElement.clientWidth - 32;
+  el.width = w * dpr; el.height = h * dpr;
+  el.style.width = w+'px'; el.style.height = h+'px';
+  const ctx = el.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return {ctx, w, h};
+}
+
+function drawPieChart(canvasId, emptyId, labels, values, colors) {
+  const el = document.getElementById(canvasId);
+  const empty = document.getElementById(emptyId);
+  const total = values.reduce((a,b)=>a+b,0);
+  if (!total) { el.style.display='none'; empty.style.display='block'; return; }
+  el.style.display='block'; empty.style.display='none';
+
+  const h = parseInt(el.getAttribute('height'));
+  const {ctx, w} = setupCanvas(el, h);
+
+  // Filter to only items with values
+  const active = labels.map((l,i)=>({l,v:values[i],c:colors[i]})).filter(x=>x.v>0);
+  const tot = active.reduce((a,x)=>a+x.v,0);
+
+  const radius = Math.min(w * 0.32, h * 0.38);
+  const cx = w * 0.36;
+  const cy = h / 2;
+
+  // Draw donut slices
+  let angle = -Math.PI / 2;
+  active.forEach(item => {
+    const slice = (item.v / tot) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = item.c;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    angle += slice;
+  });
+
+  // Donut hole
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.52, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Centre label
+  ctx.fillStyle = '#2d2028';
+  ctx.font = `bold ${Math.round(radius * 0.28)}px DM Sans, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(tot, cx, cy - 6);
+  ctx.font = `${Math.round(radius * 0.18)}px DM Sans, sans-serif`;
+  ctx.fillStyle = '#9e8a94';
+  ctx.fillText('total', cx, cy + radius * 0.22);
+
+  // Legend on the right
+  const legendX = cx + radius + 16;
+  const legendY = cy - (active.length * 14) / 2;
+  active.slice(0, 10).forEach((item, i) => {
+    const ly = legendY + i * 18;
+    ctx.fillStyle = item.c;
+    ctx.beginPath();
+    ctx.roundRect(legendX, ly, 10, 10, 3);
+    ctx.fill();
+    ctx.fillStyle = '#2d2028';
+    ctx.font = `${10}px DM Sans, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const pct = Math.round((item.v / tot) * 100);
+    ctx.fillText(`${item.l} (${pct}%)`, legendX + 14, ly + 5);
+  });
+}
+
+function drawBarChart(canvasId, emptyId, labels, values, colors, maxVal) {
+  const el = document.getElementById(canvasId);
+  const empty = document.getElementById(emptyId);
+  const total = values.reduce((a,b)=>a+b,0);
+  if (!total) { el.style.display='none'; empty.style.display='block'; return; }
+  el.style.display='block'; empty.style.display='none';
+
+  const h = parseInt(el.getAttribute('height'));
+  const {ctx, w} = setupCanvas(el, h);
+
+  const padL=8, padR=8, padT=14, padB=36;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const max = maxVal || Math.max(...values) || 1;
+  const barW = Math.min(32, (chartW / labels.length) - 6);
+  const gap = (chartW - barW * labels.length) / (labels.length + 1);
+
+  labels.forEach((lbl, i) => {
+    const x = padL + gap + i * (barW + gap);
+    const barH = (values[i] / max) * chartH;
+    const y = padT + chartH - barH;
+
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [6,6,0,0]);
+    ctx.fill();
+
+    if (values[i] > 0) {
+      ctx.fillStyle = '#2d2028';
+      ctx.font = `10px DM Sans, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(values[i], x + barW/2, y - 2);
+    }
+
+    ctx.fillStyle = '#9e8a94';
+    ctx.font = `9px DM Sans, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(lbl, x + barW/2, padT + chartH + 4);
+  });
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────
+function renderStats() {
+  const allLogs = Object.entries(logs).sort(([a],[b])=>a<b?-1:1);
+
+  // ── Summary cards ──
+  const moodCounts = {};
+  allLogs.forEach(([,v]) => (v.moods||[]).forEach(m => moodCounts[m]=(moodCounts[m]||0)+1));
+  const topMoodId = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const moodObj = MOODS.find(m=>m.id===topMoodId);
+  const next = nextPeriodDays();
+  const totalLogged = allLogs.length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-val">${settings.cycleLen}</div>
+      <div class="stat-label">Cycle length (days)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${settings.periodLen}</div>
+      <div class="stat-label">Period length (days)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${next !== null ? next : '—'}</div>
+      <div class="stat-label">Days until next period</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${totalLogged}</div>
+      <div class="stat-label">Days logged total</div>
+    </div>
+  `;
+
+  // ── Cycle bar ──
+  const cl = settings.cycleLen, pl = settings.periodLen;
+  const ovDay = Math.round(cl - 14);
+  const fertStart = ovDay - 5;
+  const pmsStart = ovDay + 2;
+  const segs = [
+    {color:'#f5dde3',days:pl},
+    {color:'#e8e8f0',days:fertStart-pl},
+    {color:'#ddeee3',days:ovDay-fertStart},
+    {color:'#fdefd5',days:2},
+    {color:'#e8e2f5',days:cl-pmsStart},
+  ].filter(s=>s.days>0);
+  document.getElementById('cycleBar').innerHTML = segs.map(s=>
+    `<div class="cycle-seg" style="background:${s.color};flex:${s.days}"></div>`
+  ).join('');
+
+  // ── Mood pie chart ──
+  const moodLabels = MOODS.map(m => m.emoji+' '+m.label);
+  const moodVals   = MOODS.map(m => moodCounts[m.id] || 0);
+  const moodColors = ['#f5dde3','#ddeee3','#fdefd5','#e8e2f5','#e8a0b0','#b5d5c0','#f7d794','#c3b1e1','#f0b8c4','#a8d8a8','#fce38a','#c4637a'];
+  drawPieChart('moodBarChart','moodBarEmpty', moodLabels, moodVals, moodColors);
+
+  // ── Mood by phase pie chart ──
+  const phaseNames  = ['period','follicular','fertile','ovulation','pms'];
+  const phaseLabels = ['🩸 Period','🌱 Follicular','🌿 Fertile','✨ Ovulation','🌙 PMS'];
+  const phaseColors = ['#f5dde3','#e8e8f0','#ddeee3','#fdefd5','#e8e2f5'];
+  const phaseMoodCount = {};
+  phaseNames.forEach(p => phaseMoodCount[p] = 0);
+  allLogs.forEach(([ds, v]) => {
+    const p = getCyclePhase(ds);
+    if (p && (v.moods||[]).length) phaseMoodCount[p] += v.moods.length;
+  });
+  drawPieChart('moodPhaseChart','moodPhaseEmpty', phaseLabels, phaseNames.map(p=>phaseMoodCount[p]||0), phaseColors);
+
+  // ── Flow bar chart (keep as bar) ──
+  const flowLogs = allLogs.filter(([,v])=>v.period && v.flow);
+  const flowMap = {light:1, medium:2, heavy:3};
+  const flowLabels = flowLogs.slice(-14).map(([ds])=>{
+    const d=parseDate(ds); return d.toLocaleDateString('en',{month:'short',day:'numeric'});
+  });
+  const flowVals   = flowLogs.slice(-14).map(([,v])=>flowMap[v.flow]||0);
+  const flowColors = flowVals.map(v=>v===1?'#f5dde3':v===2?'#e8a0b0':'#c4637a');
+  drawBarChart('flowChart','flowEmpty', flowLabels, flowVals, flowColors, 3);
+
+  // ── Symptom pie chart ──
+  const symptomCounts = {};
+  allLogs.forEach(([,v])=>(v.symptoms||[]).forEach(s=>symptomCounts[s]=(symptomCounts[s]||0)+1));
+  const sortedSymptoms = Object.entries(symptomCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const symColors = ['#e8e2f5','#f5dde3','#ddeee3','#fdefd5','#e8e8f0','#e8a0b0','#b5d5c0','#f7d794'];
+  drawPieChart('symptomChart','symptomEmpty', sortedSymptoms.map(([s])=>s), sortedSymptoms.map(([,c])=>c), symColors);
+
+  // ── Moon mood pie chart ──
+  const moonPhaseNames = ['🌑 New','🌒 Wax Cres','🌓 1st Qtr','🌔 Wax Gib','🌕 Full','🌖 Wan Gib','🌗 Last Qtr','🌘 Wan Cres'];
+  const moonMoodCounts = Array(8).fill(0);
+  const moonPhaseMap = {'New Moon':0,'Waxing Crescent':1,'First Quarter':2,'Waxing Gibbous':3,'Full Moon':4,'Waning Gibbous':5,'Last Quarter':6,'Waning Crescent':7};
+  allLogs.forEach(([ds,v])=>{
+    if ((v.moods||[]).length) {
+      const mp = getMoonPhase(ds);
+      const idx = moonPhaseMap[mp.name];
+      if (idx!==undefined) moonMoodCounts[idx]+=v.moods.length;
+    }
+  });
+  const moonColors = ['#e8e8f0','#ede4f0','#e8e2f5','#ddd5ee','#f5dde3','#ddd5ee','#e8e2f5','#ede4f0'];
+  drawPieChart('moonMoodChart','moonMoodEmpty', moonPhaseNames, moonMoodCounts, moonColors);
+
+  // ── Recent history list ──
+  const recent = allLogs.slice(-10).reverse();
+  document.getElementById('moodHistory').innerHTML = recent.length ? recent.map(([ds, v]) => {
+    const mLabels = (v.moods||[]).map(id=>MOODS.find(m=>m.id===id)).filter(Boolean).map(m=>m.emoji+' '+m.label).join(', ');
+    const d = parseDate(ds);
+    return `<div class="insight-card">
+      <div class="insight-icon">${(v.moods||[]).length?MOODS.find(m=>m.id===v.moods[0])?.emoji||'📅':'📅'}</div>
+      <div><div class="insight-title">${d.toLocaleDateString('en',{month:'short',day:'numeric'})}</div>
+      <div class="insight-desc">${mLabels||'No mood logged'}${v.symptoms?.length?' · '+v.symptoms.slice(0,2).join(', '):''}${v.notes?' · '+v.notes:''}</div></div>
+    </div>`;
+  }).join('') : `<div class="insight-card"><div class="insight-icon">📋</div><div><div class="insight-title">No logs yet</div><div class="insight-desc">Start logging on the Today tab to see your history here.</div></div></div>`;
+}
+
+  const el = document.getElementById(canvasId);
+  const empty = document.getElementById(emptyId);
+  const total = values.reduce((a,b)=>a+b,0);
+  if (!total) { el.style.display='none'; empty.style.display='block'; return; }
+  el.style.display='block'; empty.style.display='none';
+
+  const dpr = window.devicePixelRatio || 1;
+  const w = el.parentElement.clientWidth - 32;
+  const h = parseInt(el.getAttribute('height'));
+  el.width = w * dpr; el.height = h * dpr;
+  el.style.width = w+'px'; el.style.height = h+'px';
+  const ctx = el.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const padL=8, padR=8, padT=10, padB=30;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const max = maxVal || Math.max(...values) || 1;
+  const barW = Math.min(36, (chartW / labels.length) - 6);
+  const gap = (chartW - barW * labels.length) / (labels.length + 1);
+
+  labels.forEach((lbl, i) => {
+    const x = padL + gap + i * (barW + gap);
+    const barH = (values[i] / max) * chartH;
+    const y = padT + chartH - barH;
+
+    // Bar
+    ctx.fillStyle = colors[i % colors.length];
+    const r = 6;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + barW - r, y);
+    ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+    ctx.lineTo(x + barW, y + barH);
+    ctx.lineTo(x, y + barH);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Value on top
+    if (values[i] > 0) {
+      ctx.fillStyle = '#2d2028';
+      ctx.font = `${10 * dpr / dpr}px DM Sans, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(values[i], x + barW/2, y - 3);
+    }
+
+    // Label below
+    ctx.fillStyle = '#9e8a94';
+    ctx.font = `${9 * dpr / dpr}px DM Sans, sans-serif`;
+    ctx.textAlign = 'center';
+    // Wrap emoji + label
+    const parts = lbl.split(' ');
+    if (parts.length > 1) {
+      ctx.fillText(parts[0], x + barW/2, padT + chartH + 12);
+      ctx.fillText(parts.slice(1).join(' '), x + barW/2, padT + chartH + 22);
+    } else {
+      ctx.fillText(lbl, x + barW/2, padT + chartH + 14);
+    }
+  });
+}
+
+function drawHorizontalBar(canvasId, emptyId, labels, values, colors) {
+  const el = document.getElementById(canvasId);
+  const empty = document.getElementById(emptyId);
+  const total = values.reduce((a,b)=>a+b,0);
+  if (!total) { el.style.display='none'; empty.style.display='block'; return; }
+  el.style.display='block'; empty.style.display='none';
+
+  const dpr = window.devicePixelRatio || 1;
+  const w = el.parentElement.clientWidth - 32;
+  const h = parseInt(el.getAttribute('height'));
+  el.width = w * dpr; el.height = h * dpr;
+  el.style.width = w+'px'; el.style.height = h+'px';
+  const ctx = el.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const max = Math.max(...values) || 1;
+  const rowH = h / labels.length;
+  const padL = 90, padR = 30;
+
+  labels.forEach((lbl, i) => {
+    const y = i * rowH;
+    const barW = ((values[i] / max) * (w - padL - padR));
+    const bh = rowH * 0.5;
+    const by = y + rowH * 0.25;
+
+    // Bar
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.roundRect(padL, by, Math.max(barW, 4), bh, 4);
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = '#2d2028';
+    ctx.font = `${10}px DM Sans, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText(lbl, padL - 8, by + bh/2 + 4);
+
+    // Value
+    ctx.fillStyle = '#9e8a94';
+    ctx.textAlign = 'left';
+    ctx.fillText(values[i], padL + barW + 6, by + bh/2 + 4);
+  });
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────
+function renderStats() {
+  const allLogs = Object.entries(logs).sort(([a],[b])=>a<b?-1:1);
+
+  // ── Summary cards ──
+  const moodCounts = {};
+  allLogs.forEach(([,v]) => (v.moods||[]).forEach(m => moodCounts[m]=(moodCounts[m]||0)+1));
+  const topMoodId = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const moodObj = MOODS.find(m=>m.id===topMoodId);
+  const next = nextPeriodDays();
+  const totalLogged = allLogs.length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-val">${settings.cycleLen}</div>
+      <div class="stat-label">Cycle length (days)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${settings.periodLen}</div>
+      <div class="stat-label">Period length (days)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${next !== null ? next : '—'}</div>
+      <div class="stat-label">Days until next period</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${totalLogged}</div>
+      <div class="stat-label">Days logged total</div>
+    </div>
+  `;
+
+  // ── Cycle bar ──
+  const cl = settings.cycleLen, pl = settings.periodLen;
+  const ovDay = Math.round(cl - 14);
+  const fertStart = ovDay - 5;
+  const pmsStart = ovDay + 2;
+  const segs = [
+    {color:'#f5dde3',days:pl},
+    {color:'#e8e8f0',days:fertStart-pl},
+    {color:'#ddeee3',days:ovDay-fertStart},
+    {color:'#fdefd5',days:2},
+    {color:'#e8e2f5',days:cl-pmsStart},
+  ].filter(s=>s.days>0);
+  document.getElementById('cycleBar').innerHTML = segs.map(s=>
+    `<div class="cycle-seg" style="background:${s.color};flex:${s.days}"></div>`
+  ).join('');
+
+  // ── Mood bar chart ──
+  const moodLabels = MOODS.map(m => m.emoji+' '+m.label);
+  const moodVals = MOODS.map(m => moodCounts[m.id] || 0);
+  const moodColors = ['#f5dde3','#ddeee3','#fdefd5','#e8e2f5','#f5dde3','#e8e8f0','#fdefd5','#ddeee3','#e8e2f5','#f5dde3','#ddeee3','#fdefd5'];
+  drawBarChart('moodBarChart','moodBarEmpty', moodLabels, moodVals, moodColors);
+
+  // ── Mood by cycle phase ──
+  const phaseNames = ['period','follicular','fertile','ovulation','pms'];
+  const phaseLabels = ['🩸 Period','🌱 Follicular','🌿 Fertile','✨ Ovulation','🌙 PMS'];
+  const phaseColors = ['#f5dde3','#e8e8f0','#ddeee3','#fdefd5','#e8e2f5'];
+  // Count total moods per phase
+  const phaseMoodCount = {};
+  phaseNames.forEach(p => phaseMoodCount[p] = 0);
+  allLogs.forEach(([ds, v]) => {
+    const p = getCyclePhase(ds);
+    if (p && (v.moods||[]).length) phaseMoodCount[p] = (phaseMoodCount[p]||0) + v.moods.length;
+  });
+  const phaseVals = phaseNames.map(p => phaseMoodCount[p] || 0);
+  drawBarChart('moodPhaseChart','moodPhaseEmpty', phaseLabels, phaseVals, phaseColors);
+
+  // ── Flow chart ──
+  const flowLogs = allLogs.filter(([,v])=>v.period && v.flow);
+  const flowMap = {light:1, medium:2, heavy:3};
+  const flowLabels = flowLogs.slice(-14).map(([ds])=> {
+    const d = parseDate(ds); return d.toLocaleDateString('en',{month:'short',day:'numeric'});
+  });
+  const flowVals = flowLogs.slice(-14).map(([,v]) => flowMap[v.flow]||0);
+  const flowColors = flowVals.map(v => v===1?'#f5dde3': v===2?'#e8a0b0':'#c4637a');
+  drawBarChart('flowChart','flowEmpty', flowLabels, flowVals, flowColors, 3);
+
+  // ── Symptom chart ──
+  const symptomCounts = {};
+  allLogs.forEach(([,v]) => (v.symptoms||[]).forEach(s => symptomCounts[s]=(symptomCounts[s]||0)+1));
+  const sortedSymptoms = Object.entries(symptomCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const symLabels = sortedSymptoms.map(([s])=>s);
+  const symVals = sortedSymptoms.map(([,c])=>c);
+  const symColors = ['#e8e2f5','#f5dde3','#ddeee3','#fdefd5','#e8e8f0','#e8e2f5','#f5dde3','#ddeee3'];
+  drawHorizontalBar('symptomChart','symptomEmpty', symLabels, symVals, symColors);
+
+  // ── Moon mood chart ──
+  const moonPhaseNames = ['🌑 New','🌒 Wax Cres','🌓 1st Qtr','🌔 Wax Gib','🌕 Full','🌖 Wan Gib','🌗 Last Qtr','🌘 Wan Cres'];
+  const moonMoodCounts = Array(8).fill(0);
+  const moonPhaseMap = {'New Moon':0,'Waxing Crescent':1,'First Quarter':2,'Waxing Gibbous':3,'Full Moon':4,'Waning Gibbous':5,'Last Quarter':6,'Waning Crescent':7};
+  allLogs.forEach(([ds, v]) => {
+    if ((v.moods||[]).length) {
+      const mp = getMoonPhase(ds);
+      const idx = moonPhaseMap[mp.name];
+      if (idx !== undefined) moonMoodCounts[idx] += v.moods.length;
+    }
+  });
+  const moonColors = ['#2d2028','#3d2d3a','#7b5e7b','#8e7bb5','#c4637a','#8e7bb5','#7b5e7b','#3d2d3a'].map(c=>c+'44').map((c,i)=> ['#e8e8f0','#ede4f0','#e8e2f5','#ddd5ee','#f5dde3','#ddd5ee','#e8e2f5','#ede4f0'][i]);
+  drawBarChart('moonMoodChart','moonMoodEmpty', moonPhaseNames, moonMoodCounts, moonColors);
+
+  // ── Recent history list ──
+  const recent = allLogs.slice(-10).reverse();
+  document.getElementById('moodHistory').innerHTML = recent.length ? recent.map(([ds, v]) => {
+    const mLabels = (v.moods||[]).map(id => MOODS.find(m=>m.id===id)).filter(Boolean).map(m=>m.emoji+' '+m.label).join(', ');
+    const d = parseDate(ds);
+    return `<div class="insight-card">
+      <div class="insight-icon">${(v.moods||[]).length ? MOODS.find(m=>m.id===v.moods[0])?.emoji || '📅' : '📅'}</div>
+      <div><div class="insight-title">${d.toLocaleDateString('en',{month:'short',day:'numeric'})}</div>
+      <div class="insight-desc">${mLabels || 'No mood logged'}${v.symptoms?.length ? ' · '+v.symptoms.slice(0,2).join(', ') : ''}${v.notes?' · '+v.notes:''}</div></div>
+    </div>`;
+  }).join('') : `<div class="insight-card"><div class="insight-icon">📋</div><div><div class="insight-title">No logs yet</div><div class="insight-desc">Start logging on the Today tab to see your history here.</div></div></div>`;
+}
+
+// ─── INSIGHTS ──────────────────────────────────────────────────────────────
+function renderInsights() {
+  const p = getCyclePhase(todayStr(0));
+  const next = nextPeriodDays();
+  const ovDay = Math.round(settings.cycleLen - 14);
+  const today = todayStr(0);
+  const d = diffDays(settings.lastPeriod, today);
+  let pos = d % settings.cycleLen;
+  if (pos < 0) pos += settings.cycleLen;
+  const daysToOv = ((ovDay - pos) + settings.cycleLen) % settings.cycleLen;
+
+  const insights = [
+    {icon:'🩸', title:'Next period', desc: next !== null
+      ? `Your next period is predicted in approximately ${next} day${next===1?'':'s'}, around ${(() => { const nd = new Date(); nd.setDate(nd.getDate()+next); return nd.toLocaleDateString('en',{month:'long',day:'numeric'}); })()}.`
+      : 'Set your last period date in Settings to get predictions.'},
+    {icon:'✨', title:'Ovulation window', desc: daysToOv < 7
+      ? `Ovulation is predicted in ${daysToOv} day${daysToOv===1?'':'s'}. Your fertile window is the 5 days before and 1 day after ovulation.`
+      : `Ovulation is expected in about ${daysToOv} days.`},
+    {icon:'💊', title:`You're in the ${p||'—'} phase`, desc: {
+      period:'Your body is shedding the uterine lining. Rest, stay warm, and nourish yourself with iron-rich foods.',
+      follicular:'Estrogen is rising — energy levels often increase. Good time for new projects and social activities.',
+      fertile:'Your body is preparing for ovulation. Estrogen peaks and you may feel your most confident and social.',
+      ovulation:'Luteinizing hormone surges. Some people experience mild discomfort (mittelschmerz) on one side.',
+      pms:'Progesterone is falling. Be gentle with yourself — rest, reduce salt and caffeine, and prioritize sleep.',
+    }[p] || 'Log your cycle regularly for personalised insights.'},
+    {icon:'🌡️', title:'Symptom tip', desc:'Tracking symptoms regularly helps you spot patterns. If you notice unusual pain, heavy bleeding, or irregular cycles, consider speaking with a healthcare provider.'},
+    {icon:'💧', title:'Hydration', desc:'Drinking plenty of water helps with bloating, cramps, and overall energy throughout your cycle.'},
+    {icon:'😴', title:'Sleep & cycle', desc:'Sleep quality often shifts with your cycle. Many people sleep best in the follicular phase and more lightly during PMS.'},
+  ];
+
+  document.getElementById('insightList').innerHTML = insights.map(ins =>
+    `<div class="insight-card">
+      <div class="insight-icon">${ins.icon}</div>
+      <div><div class="insight-title">${ins.title}</div><div class="insight-desc">${ins.desc}</div></div>
+    </div>`
+  ).join('');
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────
+document.getElementById('settingCycleLen').value = settings.cycleLen;
+document.getElementById('settingPeriodLen').value = settings.periodLen;
+document.getElementById('settingLastPeriod').value = settings.lastPeriod;
+
+document.getElementById('saveSettings').addEventListener('click', () => {
+  settings.cycleLen  = parseInt(document.getElementById('settingCycleLen').value)  || 28;
+  settings.periodLen = parseInt(document.getElementById('settingPeriodLen').value) || 5;
+  settings.lastPeriod= document.getElementById('settingLastPeriod').value || settings.lastPeriod;
+  save('luna_settings', settings);
+  renderAll();
+  showToast('✓ Settings saved!');
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({settings, logs}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `luna-export-${todayStr(0)}.json`; a.click();
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (confirm('Delete all your logs permanently? This cannot be undone.')) {
+    logs = {};
+    save('luna_logs', logs);
+    renderAll();
+    showToast('All data cleared');
+  }
+});
+
+// ─── CAROUSEL ─────────────────────────────────────────────────────────────
+let carouselIndex = 0;
+const CAROUSEL_COUNT = 5;
+
+function initCarousel() {
+  // Build dots
+  const dotsEl = document.getElementById('carouselDots');
+  dotsEl.innerHTML = Array.from({length: CAROUSEL_COUNT}, (_,i) =>
+    `<div class="carousel-dot${i===0?' active':''}" onclick="goToSlide(${i})"></div>`
+  ).join('');
+
+  // Touch swipe support
+  const track = document.getElementById('carouselTrack');
+  let startX = 0, isDragging = false;
+
+  track.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    isDragging = true;
+  }, {passive: true});
+
+  track.addEventListener('touchend', e => {
+    if (!isDragging) return;
+    const diff = startX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0 && carouselIndex < CAROUSEL_COUNT - 1) goToSlide(carouselIndex + 1);
+      else if (diff < 0 && carouselIndex > 0) goToSlide(carouselIndex - 1);
+    }
+    isDragging = false;
+  }, {passive: true});
+}
+
+function goToSlide(index) {
+  carouselIndex = index;
+  document.getElementById('carouselTrack').style.transform = `translateX(-${index * 100}%)`;
+  document.querySelectorAll('.carousel-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === index);
+  });
+  // Redraw the visible chart after transition
+  setTimeout(() => renderStats(), 360);
+}
+
+// ─── MYSTIC ───────────────────────────────────────────────────────────────
+const TAROT_CARDS = [
+  {name:'The Fool',emoji:'🌟'},{name:'The Magician',emoji:'🪄'},{name:'The High Priestess',emoji:'🌙'},
+  {name:'The Empress',emoji:'🌸'},{name:'The Emperor',emoji:'👑'},{name:'The Hierophant',emoji:'📿'},
+  {name:'The Lovers',emoji:'💞'},{name:'The Chariot',emoji:'🏆'},{name:'Strength',emoji:'🦁'},
+  {name:'The Hermit',emoji:'🕯️'},{name:'Wheel of Fortune',emoji:'☸️'},{name:'Justice',emoji:'⚖️'},
+  {name:'The Hanged Man',emoji:'🌿'},{name:'Death',emoji:'🦋'},{name:'Temperance',emoji:'🌊'},
+  {name:'The Devil',emoji:'⛓️'},{name:'The Tower',emoji:'⚡'},{name:'The Star',emoji:'⭐'},
+  {name:'The Moon',emoji:'🌕'},{name:'The Sun',emoji:'☀️'},{name:'Judgement',emoji:'📯'},
+  {name:'The World',emoji:'🌍'},{name:'Ace of Cups',emoji:'🏆'},{name:'Two of Cups',emoji:'💑'},
+  {name:'Three of Cups',emoji:'🥂'},{name:'Four of Pentacles',emoji:'💰'},{name:'Five of Swords',emoji:'⚔️'},
+  {name:'Six of Wands',emoji:'🎖️'},{name:'Seven of Cups',emoji:'🌈'},{name:'Eight of Pentacles',emoji:'🔨'},
+  {name:'Nine of Swords',emoji:'😰'},{name:'Ten of Cups',emoji:'🏡'},
+];
+
+function getDailyCard(dateS) {
+  // deterministic card per date
+  const hash = dateS.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+  return TAROT_CARDS[hash % TAROT_CARDS.length];
+}
+
+function initMysticDate() {
+  document.getElementById('mysticDate').value = todayStr(0);
+  updateMoonCard(todayStr(0));
+}
+
+function updateMoonCard(dateS) {
+  const moon = getMoonPhase(dateS);
+  document.getElementById('moonIcon').textContent = moon.emoji;
+  document.getElementById('moonPhaseName').textContent = moon.name;
+  const card = getDailyCard(dateS);
+  document.getElementById('tarotIcon').textContent = card.emoji;
+  document.getElementById('tarotName').textContent = card.name;
+}
+
+async function generateReading() {
+  const dateS = document.getElementById('mysticDate').value || todayStr(0);
+  const moon = getMoonPhase(dateS);
+  const card = getDailyCard(dateS);
+  const d = parseDate(dateS);
+  const dateLabel = d.toLocaleDateString('en', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+  const cyclePhase = getCyclePhase(dateS) || 'unknown';
+
+  updateMoonCard(dateS);
+
+  // Set loading state
+  const loading = '<span class="mystic-loading">✦ Receiving your reading… ✦</span>';
+  document.getElementById('moonBody').innerHTML = loading;
+  document.getElementById('astroBody').innerHTML = loading;
+  document.getElementById('tarotBody').innerHTML = loading;
+  document.getElementById('mysticReadBtn').disabled = true;
+
+  const prompt = `You are a mystical, poetic astrologer and tarot reader. Generate a beautiful, personalised reading for ${dateLabel}.
+
+Moon phase: ${moon.name} ${moon.emoji}
+Tarot card of the day: ${card.name} ${card.emoji}
+Menstrual cycle phase: ${cyclePhase}
+
+Please provide THREE short readings, each 2-3 sentences, written in an evocative, mystical but grounded tone. Be specific to the moon phase and tarot card. Respond ONLY as valid JSON with no markdown, no backticks, exactly this shape:
+{"moon":"...lunar reading here...","astro":"...astronomy/celestial energy reading here...","tarot":"...tarot reading here, mentioning the card name..."}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    document.getElementById('moonBody').textContent = parsed.moon;
+    document.getElementById('astroBody').textContent = parsed.astro;
+    document.getElementById('tarotBody').textContent = parsed.tarot;
+  } catch(e) {
+    const fallback = 'The stars are quiet right now. Try again in a moment.';
+    document.getElementById('moonBody').textContent = fallback;
+    document.getElementById('astroBody').textContent = fallback;
+    document.getElementById('tarotBody').textContent = fallback;
+  }
+  document.getElementById('mysticReadBtn').disabled = false;
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────
+function switchView(name, btn) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='stats') { renderStats(); initCarousel(); }
+  if (name==='insights') renderInsights();
+  if (name==='mystic') initMysticDate();
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderCal();
+  renderPhaseStrip();
+  renderHeaderPhase();
+  renderStats();
+  renderInsights();
+  loadLogForDate(selectedDate);
+}
+
+renderMoodGrid();
+renderSymptomGrid();
+renderAll();
+// init moon for today
+const initMoon = getMoonPhase(selectedDate);
+document.getElementById('logPanelMoon').textContent = `${initMoon.emoji} ${initMoon.name}`;
+// ─── SERVICE WORKER ───────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
