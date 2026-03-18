@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Luna — Cycle & Mood Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c4637a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Luna">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--rose:#c4637a;--rose-light:#e8a0b0;--rose-pale:#f5dde3;--mauve:#7b5e7b;--cream:#fdf8f4;--parchment:#f0e8df;--ink:#2d2028;--muted:#9e8a94;--white:#ffffff}
+html{font-size:16px}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 10% 10%,#f0d8df55 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 90% 80%,#ddd0ea44 0%,transparent 60%);pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 0 100px}
+header{padding:36px 24px 16px;display:flex;align-items:flex-end;justify-content:space-between}
+.brand-name{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:300;letter-spacing:0.04em;color:var(--rose);line-height:1}
+.brand-tagline{font-size:0.72rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px}
+.header-phase{text-align:right;font-family:'Cormorant Garamond',serif;font-size:0.85rem;color:var(--mauve);font-style:italic}
+.phase-strip{display:flex;gap:8px;padding:0 24px 20px;overflow-x:auto;scrollbar-width:none}
+.phase-strip::-webkit-scrollbar{display:none}
+.phase-tag{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:0.72rem;letter-spacing:0.08em;font-weight:500}
+.phase-tag.period{background:#f5dde3;color:var(--rose)}.phase-tag.fertile{background:#ddeee3;color:#4a7a58}
+.phase-tag.ovulation{background:#fdefd5;color:#a06b10}.phase-tag.pms{background:#e8e2f5;color:var(--mauve)}
+.phase-tag.follicular{background:#e8e8f0;color:#5a5472}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:var(--ink);padding:0 24px 12px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--rose-light),transparent)}
+.calendar-wrap{padding:0 24px;margin-bottom:16px}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-month{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:400}
+.cal-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--rose-light);background:var(--white);color:var(--rose);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{text-align:center;font-size:0.65rem;letter-spacing:0.1em;color:var(--muted);padding-bottom:6px;text-transform:uppercase}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;font-size:0.82rem;cursor:pointer;position:relative;user-select:none}
+.cal-day:hover:not(.empty){background:var(--rose-pale)}
+.cal-day.empty{cursor:default}
+.cal-day.today{box-shadow:0 0 0 2px var(--rose);font-weight:500}
+.cal-day.period-day{background:#f5dde3;color:var(--rose);font-weight:500}
+.cal-day.fertile-day{background:#ddeee3;color:#3a6a48}
+.cal-day.ovulation-day{background:#fdefd5;color:#a06b10;font-weight:500}
+.cal-day.pms-day{background:#e8e2f5;color:var(--mauve)}
+.cal-day.selected-day{box-shadow:0 0 0 2px var(--ink)}
+.cal-day.logged::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--mauve)}
+.cal-moon{font-size:0.45rem;line-height:1;opacity:0.75}
+.legend{display:flex;flex-wrap:wrap;gap:10px;padding:4px 24px 16px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--muted)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.log-panel{margin:0 24px;background:var(--white);border-radius:20px;border:1px solid var(--rose-pale);overflow:hidden;box-shadow:0 4px 24px #c4637a12}
+.log-panel-header{background:linear-gradient(135deg,var(--rose-pale),#ede4f0);padding:16px 20px 12px}
+.log-panel-date{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--ink)}
+.log-panel-moon{font-size:0.78rem;color:var(--mauve);margin-top:3px;font-family:'Cormorant Garamond',serif;font-style:italic}
+.log-panel-body{padding:18px 20px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--parchment)}
+.toggle-label{font-size:0.88rem;color:var(--ink)}.toggle-sub{font-size:0.72rem;color:var(--muted);margin-top:1px}
+.toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;cursor:pointer;background:var(--parchment);border-radius:24px;transition:background .2s}
+.slider::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;left:3px;top:3px;background:white;box-shadow:0 1px 4px #0002;transition:transform .2s}
+input:checked+.slider{background:var(--rose)}
+input:checked+.slider::before{transform:translateX(18px)}
+.section-label{font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin:14px 0 10px}
+.flow-btns{display:flex;gap:8px}
+.flow-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid var(--parchment);background:var(--cream);color:var(--muted);font-size:0.72rem;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .18s}
+.flow-btn:hover{border-color:var(--rose-light);background:var(--rose-pale)}
+.flow-btn.active{background:var(--rose-pale);border-color:var(--rose);color:var(--rose)}
+.flow-drops{display:flex;gap:2px}
+.drop{width:14px;height:18px;background:var(--parchment);clip-path:polygon(50% 0%,80% 40%,100% 65%,85% 90%,15% 90%,0% 65%,20% 40%);transition:background .18s}
+.flow-btn.active .drop{background:var(--rose)}.flow-btn:hover .drop{background:var(--rose-light)}.drop.dim{opacity:0.25}
+.mood-grid{display:flex;gap:8px;flex-wrap:wrap}
+.mood-btn{padding:7px 14px;border-radius:20px;border:1.5px solid var(--parchment);background:var(--cream);color:var(--muted);font-size:0.8rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.mood-btn:hover{border-color:var(--rose-light);color:var(--rose)}
+.mood-btn.active{background:var(--rose-pale);border-color:var(--rose);color:var(--rose);font-weight:500}
+.symptom-grid{display:flex;gap:8px;flex-wrap:wrap}
+.symptom-btn{padding:6px 12px;border-radius:16px;border:1.5px solid var(--parchment);background:var(--cream);color:var(--muted);font-size:0.75rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s}
+.symptom-btn:hover{border-color:var(--mauve);color:var(--mauve)}
+.symptom-btn.active{background:#e8e2f5;border-color:var(--mauve);color:var(--mauve)}
+.notes-input{width:100%;border:1.5px solid var(--parchment);border-radius:12px;padding:10px 14px;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--cream);resize:none;outline:none;line-height:1.5;margin-top:4px}
+.notes-input:focus{border-color:var(--rose-light)}
+.notes-input::placeholder{color:var(--muted)}
+.save-btn{margin-top:18px;width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--mauve));color:white;border:none;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;box-shadow:0 4px 16px #c4637a30}
+.save-btn:active{transform:scale(0.98)}
+.stats-wrap{padding:0 24px;margin-bottom:20px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-card{background:var(--white);border-radius:16px;padding:16px;border:1px solid var(--parchment)}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:var(--rose);line-height:1;margin-bottom:4px}
+.stat-label{font-size:0.72rem;color:var(--muted);letter-spacing:0.06em}
+.cycle-bar-wrap{margin:0 24px 20px;background:var(--white);border-radius:16px;padding:18px;border:1px solid var(--parchment)}
+.cycle-bar-title{font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px}
+.cycle-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px}
+.cycle-seg{height:100%;border-radius:3px}
+.cycle-bar-legend{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
+.cbl-item{display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--muted)}
+.cbl-dot{width:8px;height:8px;border-radius:2px}
+.insight-list{padding:0 24px;display:flex;flex-direction:column;gap:12px}
+.insight-card{background:var(--white);border-radius:16px;padding:16px 18px;border:1px solid var(--parchment);display:flex;gap:14px;align-items:flex-start}
+.insight-icon{font-size:1.4rem;flex-shrink:0}
+.insight-title{font-size:0.88rem;font-weight:500;color:var(--ink);margin-bottom:3px}
+.insight-desc{font-size:0.78rem;color:var(--muted);line-height:1.5}
+.mystic-card{margin:0 24px 14px;background:var(--white);border-radius:20px;border:1px solid var(--parchment);overflow:hidden}
+.mystic-card-header{display:flex;align-items:center;gap:14px;padding:16px 18px 12px;background:linear-gradient(135deg,#f0e8f8,#f5dde3);border-bottom:1px solid var(--parchment)}
+.mystic-icon{font-size:2rem;flex-shrink:0}
+.mystic-card-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--ink)}
+.mystic-card-sub{font-size:0.68rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-top:1px}
+.mystic-body{padding:14px 18px 16px;font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--ink);line-height:1.7;min-height:60px}
+.mystic-loading{opacity:0.5;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:0.8}}
+.settings-wrap{padding:0 24px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--parchment)}
+.setting-label{font-size:0.9rem;color:var(--ink)}.setting-sub{font-size:0.72rem;color:var(--muted);margin-top:2px}
+.setting-input{border:1.5px solid var(--parchment);border-radius:8px;padding:5px 8px;font-size:0.9rem;text-align:center;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--cream);outline:none}
+.action-btn{padding:8px 16px;border-radius:12px;background:var(--rose-pale);border:1.5px solid var(--rose);color:var(--rose);font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer}
+.action-btn.danger{border-color:#c0392b;color:#c0392b;background:#fdecea}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--rose-pale);display:flex;justify-content:space-around;padding:10px 0 16px;z-index:10}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.62rem;color:var(--muted);cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;background:none;border:none;font-family:'DM Sans',sans-serif;transition:color .15s}
+.nav-btn.active{color:var(--rose)}.nav-btn svg{width:20px;height:20px}
+.view{display:none}.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.view.active>*{animation:fadeIn 0.3s ease both}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:white;padding:11px 22px;border-radius:24px;font-size:0.82rem;box-shadow:0 6px 24px #0004;transition:transform 0.3s cubic-bezier(.34,1.56,.64,1),opacity 0.3s;opacity:0;z-index:100;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="brand-name">Luna</div>
+      <div class="brand-tagline">Cycle &amp; Mood Tracker</div>
+    </div>
+    <div class="header-phase" id="headerPhase"></div>
+  </header>
+
+  <!-- HOME -->
+  <div class="view active" id="view-home">
+    <div class="phase-strip" id="phaseStrip"></div>
+    <div class="section-title">This Month</div>
+    <div class="calendar-wrap">
+      <div class="cal-nav">
+        <button class="cal-btn" id="prevMonth">&#8249;</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-btn" id="nextMonth">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f5dde3;border:1px solid #c4637a"></div>Period</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ddeee3;border:1px solid #7ba68a"></div>Fertile</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdefd5;border:1px solid #e8a83d"></div>Ovulation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e8e2f5;border:1px solid #8e7bb5"></div>PMS</div>
+    </div>
+    <div class="log-panel">
+      <div class="log-panel-header">
+        <div class="log-panel-date" id="logPanelDate">Today</div>
+        <div class="log-panel-moon" id="logPanelMoon"></div>
+      </div>
+      <div class="log-panel-body">
+        <div class="toggle-row">
+          <div><div class="toggle-label">Period</div><div class="toggle-sub">Mark this day as a period day</div></div>
+          <label class="toggle"><input type="checkbox" id="togglePeriod"><span class="slider"></span></label>
+        </div>
+        <div id="flowSection" style="display:none">
+          <div class="section-label">Flow intensity</div>
+          <div class="flow-btns">
+            <button class="flow-btn" data-flow="light"><div class="flow-drops"><div class="drop"></div><div class="drop dim"></div><div class="drop dim"></div></div>Light</button>
+            <button class="flow-btn" data-flow="medium"><div class="flow-drops"><div class="drop"></div><div class="drop"></div><div class="drop dim"></div></div>Normal</button>
+            <button class="flow-btn" data-flow="heavy"><div class="flow-drops"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div>Heavy</button>
+          </div>
+        </div>
+        <div class="section-label">How are you feeling?</div>
+        <div class="mood-grid" id="moodGrid"></div>
+        <div class="section-label">Symptoms</div>
+        <div class="symptom-grid" id="symptomGrid"></div>
+        <div class="section-label">Notes</div>
+        <textarea class="notes-input" id="notesInput" rows="2" placeholder="Anything to remember about today…"></textarea>
+        <button class="save-btn" id="saveBtn">Save today's log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="view" id="view-stats">
+    <div class="section-title" style="padding-top:16px">Your Cycle</div>
+    <div class="stats-wrap"><div class="stats-grid" id="statsGrid"></div></div>
+    <div class="section-title">Cycle Breakdown</div>
+    <div class="cycle-bar-wrap">
+      <div class="cycle-bar-title">Phase distribution</div>
+      <div class="cycle-bar" id="cycleBar"></div>
+      <div class="cycle-bar-legend">
+        <div class="cbl-item"><div class="cbl-dot" style="background:#f5dde3"></div>Period</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#e8e8f0"></div>Follicular</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#fdefd5"></div>Ovulation</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#ddeee3"></div>Fertile</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#e8e2f5"></div>Luteal</div>
+      </div>
+    </div>
+    <div class="section-title">Recent History</div>
+    <div class="insight-list" id="moodHistory"></div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="view" id="view-insights">
+    <div class="section-title" style="padding-top:16px">Insights</div>
+    <div class="insight-list" id="insightList"></div>
+  </div>
+
+  <!-- MYSTIC -->
+  <div class="view" id="view-mystic">
+    <div class="section-title" style="padding-top:16px">✨ Mystic</div>
+    <div style="padding:0 24px 16px;display:flex;align-items:center;gap:10px">
+      <label style="font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase">Reading for</label>
+      <input type="date" id="mysticDate" class="setting-input" style="width:auto;flex:1">
+      <button class="action-btn" id="mysticReadBtn" onclick="generateReading()">Read ✦</button>
+    </div>
+    <div class="mystic-card">
+      <div class="mystic-card-header"><span class="mystic-icon" id="moonIcon">🌕</span><div><div class="mystic-card-title" id="moonPhaseName">Full Moon</div><div class="mystic-card-sub">Lunar Phase</div></div></div>
+      <div class="mystic-body" id="moonBody">Tap "Read ✦" to receive your lunar reading.</div>
+    </div>
+    <div class="mystic-card">
+      <div class="mystic-card-header"><span class="mystic-icon">🔭</span><div><div class="mystic-card-title">Astronomy</div><div class="mystic-card-sub">Celestial energy</div></div></div>
+      <div class="mystic-body" id="astroBody">Your celestial reading will appear here.</div>
+    </div>
+    <div class="mystic-card">
+      <div class="mystic-card-header"><span class="mystic-icon" id="tarotIcon">🃏</span><div><div class="mystic-card-title" id="tarotName">Your Card</div><div class="mystic-card-sub">Daily Tarot</div></div></div>
+      <div class="mystic-body" id="tarotBody">Your tarot reading will appear here.</div>
+    </div>
+    <div style="padding:8px 24px 24px;font-size:0.68rem;color:var(--muted);text-align:center;line-height:1.6">Readings are generated by AI for reflection and fun. 🌙</div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <div class="section-title" style="padding-top:16px">Settings</div>
+    <div class="settings-wrap">
+      <div class="setting-row">
+        <div><div class="setting-label">Cycle length</div><div class="setting-sub">Average days per cycle</div></div>
+        <input class="setting-input" type="number" id="settingCycleLen" min="20" max="45" value="28" style="width:60px">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Period length</div><div class="setting-sub">Average days of bleeding</div></div>
+        <input class="setting-input" type="number" id="settingPeriodLen" min="2" max="10" value="5" style="width:60px">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Last period started</div><div class="setting-sub">First day of your last period</div></div>
+        <input type="date" id="settingLastPeriod" class="setting-input" style="width:auto">
+      </div>
+      <div class="setting-row" style="border-bottom:none;margin-top:8px">
+        <div></div>
+        <button class="action-btn" id="saveSettings">Save settings</button>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:16px">Data</div>
+    <div class="settings-wrap">
+      <div class="setting-row">
+        <div><div class="setting-label">Export data</div><div class="setting-sub">Download your logs as JSON</div></div>
+        <button class="action-btn" id="exportBtn">Export</button>
+      </div>
+      <div class="setting-row" style="border-bottom:none">
+        <div><div class="setting-label">Clear all data</div><div class="setting-sub">Permanently delete all logs</div></div>
+        <button class="action-btn danger" id="clearBtn">Clear</button>
+      </div>
+    </div>
+    <div style="padding:24px;font-size:0.72rem;color:var(--muted);line-height:1.6">🔒 All data is stored privately on your device only. Nothing is ever sent to any server.</div>
+  </div>
+</div>
+
+<nav>
+  <button class="nav-btn active" onclick="switchView('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Today
+  </button>
+  <button class="nav-btn" onclick="switchView('stats',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>Stats
+  </button>
+  <button class="nav-btn" onclick="switchView('insights',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2 5.5-3 7H8c-1-1.5-3-3.5-3-7a7 7 0 0 1 7-7z"/><path d="M9 21h6m-3-3v3"/></svg>Insights
+  </button>
+  <button class="nav-btn" onclick="switchView('mystic',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Mystic
+  </button>
+  <button class="nav-btn" onclick="switchView('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
+  </button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const MOODS=[
+  {id:'happy',emoji:'😊',label:'Happy'},{id:'calm',emoji:'😌',label:'Calm'},
+  {id:'energetic',emoji:'⚡',label:'Energetic'},{id:'anxious',emoji:'😰',label:'Anxious'},
+  {id:'sad',emoji:'😔',label:'Sad'},{id:'irritable',emoji:'😠',label:'Irritable'},
+  {id:'tired',emoji:'😴',label:'Tired'},{id:'moody',emoji:'🌊',label:'Moody'},
+  {id:'horny',emoji:'😈',label:'Frisky'},{id:'hungry',emoji:'🍕',label:'Hungry'},
+  {id:'thirsty',emoji:'🥤',label:'Thirsty'},
+];
+const SYMPTOMS=['Cramps','Bloating','Headache','Back pain','Breast tenderness','Nausea','Acne','Insomnia','Fatigue','Spotting','Discharge','Hot flashes'];
+const TAROT=[
+  {name:'The Fool',e:'🌟'},{name:'The Magician',e:'🪄'},{name:'The High Priestess',e:'🌙'},
+  {name:'The Empress',e:'🌸'},{name:'The Emperor',e:'👑'},{name:'The Hierophant',e:'📿'},
+  {name:'The Lovers',e:'💞'},{name:'The Chariot',e:'🏆'},{name:'Strength',e:'🦁'},
+  {name:'The Hermit',e:'🕯️'},{name:'Wheel of Fortune',e:'☸️'},{name:'Justice',e:'⚖️'},
+  {name:'The Hanged Man',e:'🌿'},{name:'Death',e:'🦋'},{name:'Temperance',e:'🌊'},
+  {name:'The Devil',e:'⛓️'},{name:'The Tower',e:'⚡'},{name:'The Star',e:'⭐'},
+  {name:'The Moon',e:'🌕'},{name:'The Sun',e:'☀️'},{name:'Judgement',e:'📯'},
+  {name:'The World',e:'🌍'},{name:'Ace of Cups',e:'🏆'},{name:'Two of Cups',e:'💑'},
+  {name:'Three of Cups',e:'🥂'},{name:'Six of Wands',e:'🎖️'},{name:'Seven of Cups',e:'🌈'},
+  {name:'Eight of Pentacles',e:'🔨'},{name:'Nine of Swords',e:'😰'},{name:'Ten of Cups',e:'🏡'},
+];
+
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+function retrieve(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function todayStr(off=0){const d=new Date();d.setDate(d.getDate()+off);return d.toISOString().slice(0,10)}
+function dStr(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function pDate(s){const p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function diffD(a,b){return Math.round((pDate(b)-pDate(a))/86400000)}
+
+let settings=retrieve('luna_settings',{cycleLen:28,periodLen:5,lastPeriod:todayStr(-28)});
+let logs=retrieve('luna_logs',{});
+let calDate=new Date();
+let selDate=todayStr(0);
+let selMoods=new Set();
+let selSymps=new Set();
+
+function moonPhase(ds){
+  const diff=(pDate(ds)-new Date(2000,0,6))/86400000;
+  let p=((diff%29.53058867)+29.53058867)%29.53058867;
+  if(p<1.85)return{e:'🌑',n:'New Moon'};if(p<5.54)return{e:'🌒',n:'Waxing Crescent'};
+  if(p<9.22)return{e:'🌓',n:'First Quarter'};if(p<12.91)return{e:'🌔',n:'Waxing Gibbous'};
+  if(p<16.61)return{e:'🌕',n:'Full Moon'};if(p<20.30)return{e:'🌖',n:'Waning Gibbous'};
+  if(p<23.99)return{e:'🌗',n:'Last Quarter'};if(p<27.68)return{e:'🌘',n:'Waning Crescent'};
+  return{e:'🌑',n:'New Moon'};
+}
+function cyclePhase(ds){
+  if(!settings.lastPeriod)return null;
+  let pos=diffD(settings.lastPeriod,ds)%settings.cycleLen;
+  if(pos<0)pos+=settings.cycleLen;
+  const cl=settings.cycleLen,pl=settings.periodLen,ovD=Math.round(cl-14);
+  if(pos<pl)return'period';
+  if(pos>=ovD-5&&pos<ovD)return'fertile';
+  if(pos>=ovD&&pos<ovD+2)return'ovulation';
+  if(pos>=ovD+2)return'pms';
+  return'follicular';
+}
+function nextPeriodIn(){
+  if(!settings.lastPeriod)return null;
+  let pos=diffD(settings.lastPeriod,todayStr(0))%settings.cycleLen;
+  if(pos<0)pos+=settings.cycleLen;
+  return settings.cycleLen-pos;
+}
+
+// Calendar
+function renderCal(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  document.getElementById('calMonth').textContent=new Date(y,m,1).toLocaleDateString('en',{month:'long',year:'numeric'});
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML=['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),tod=todayStr(0);
+  for(let i=0;i<first;i++)grid.innerHTML+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const ds=dStr(y,m,d),ph=cyclePhase(ds),log=logs[ds];
+    let cls='cal-day';
+    if(ph==='period')cls+=' period-day';
+    else if(ph==='fertile')cls+=' fertile-day';
+    else if(ph==='ovulation')cls+=' ovulation-day';
+    else if(ph==='pms')cls+=' pms-day';
+    if(log&&(log.moods?.length||log.symptoms?.length))cls+=' logged';
+    if(ds===tod)cls+=' today';
+    if(ds===selDate)cls+=' selected-day';
+    grid.innerHTML+=`<div class="${cls}" onclick="selectDay('${ds}')"><span>${d}</span><span class="cal-moon">${moonPhase(ds).e}</span></div>`;
+  }
+}
+function selectDay(ds){
+  selDate=ds;renderCal();loadLog(ds);
+  const d=pDate(ds);
+  document.getElementById('logPanelDate').textContent=ds===todayStr(0)?'Today':d.toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'});
+  const moon=moonPhase(ds);
+  document.getElementById('logPanelMoon').textContent=`${moon.e} ${moon.n}`;
+}
+document.getElementById('prevMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCal()};
+document.getElementById('nextMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCal()};
+
+// Log
+function loadLog(ds){
+  const log=logs[ds]||{};
+  document.getElementById('togglePeriod').checked=!!log.period;
+  document.getElementById('flowSection').style.display=log.period?'block':'none';
+  document.querySelectorAll('.flow-btn').forEach(b=>b.classList.toggle('active',b.dataset.flow===log.flow));
+  selMoods=new Set(log.moods||[]);selSymps=new Set(log.symptoms||[]);
+  document.getElementById('notesInput').value=log.notes||'';
+  renderMoods();renderSymptoms();
+}
+function renderMoods(){
+  document.getElementById('moodGrid').innerHTML=MOODS.map(m=>
+    `<button class="mood-btn${selMoods.has(m.id)?' active':''}" onclick="toggleMood('${m.id}')">${m.emoji} ${m.label}</button>`
+  ).join('');
+}
+function renderSymptoms(){
+  document.getElementById('symptomGrid').innerHTML=SYMPTOMS.map(s=>
+    `<button class="symptom-btn${selSymps.has(s)?' active':''}" onclick="toggleSymp('${s}')">${s}</button>`
+  ).join('');
+}
+function toggleMood(id){selMoods.has(id)?selMoods.delete(id):selMoods.add(id);renderMoods()}
+function toggleSymp(s){selSymps.has(s)?selSymps.delete(s):selSymps.add(s);renderSymptoms()}
+document.getElementById('togglePeriod').onchange=function(){
+  document.getElementById('flowSection').style.display=this.checked?'block':'none';
+};
+document.querySelectorAll('.flow-btn').forEach(b=>b.onclick=function(){
+  document.querySelectorAll('.flow-btn').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');
+});
+document.getElementById('saveBtn').onclick=()=>{
+  const isPeriod=document.getElementById('togglePeriod').checked;
+  const flow=[...document.querySelectorAll('.flow-btn.active')].map(b=>b.dataset.flow)[0]||null;
+  logs[selDate]={period:isPeriod,flow,moods:[...selMoods],symptoms:[...selSymps],notes:document.getElementById('notesInput').value.trim()};
+  store('luna_logs',logs);
+  if(isPeriod&&selDate<=todayStr(0)){settings.lastPeriod=selDate;store('luna_settings',settings)}
+  showToast('✓ Saved!');renderCal();renderPhaseStrip();renderHeaderPhase();
+};
+
+// Phase strip & header
+function renderPhaseStrip(){
+  const lbl={period:'🩸 Period',fertile:'🌿 Fertile',ovulation:'✨ Ovulation',pms:'🌙 PMS',follicular:'🌱 Follicular'};
+  let h='';
+  for(let i=0;i<7;i++){
+    const ds=todayStr(i),p=cyclePhase(ds);if(!p)continue;
+    const d=pDate(ds),l=i===0?'Today':d.toLocaleDateString('en',{weekday:'short'});
+    h+=`<div class="phase-tag ${p}">${l}: ${lbl[p]}</div>`;
+  }
+  document.getElementById('phaseStrip').innerHTML=h;
+}
+function renderHeaderPhase(){
+  const p=cyclePhase(todayStr(0));
+  const lbl={period:'Period day',fertile:'Fertile window',ovulation:'Ovulation',pms:'PMS phase',follicular:'Follicular phase'};
+  const next=nextPeriodIn();
+  let txt=p?(lbl[p]||p):'';
+  if(next!==null&&p!=='period')txt+=` · Next period in ${next}d`;
+  document.getElementById('headerPhase').textContent=txt;
+}
+
+// Stats
+function renderStats(){
+  const all=Object.entries(logs).sort(([a],[b])=>a<b?-1:1),next=nextPeriodIn();
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-val">${settings.cycleLen}</div><div class="stat-label">Cycle length (days)</div></div>
+    <div class="stat-card"><div class="stat-val">${settings.periodLen}</div><div class="stat-label">Period length (days)</div></div>
+    <div class="stat-card"><div class="stat-val">${next!==null?next:'—'}</div><div class="stat-label">Days until next period</div></div>
+    <div class="stat-card"><div class="stat-val">${all.length}</div><div class="stat-label">Days logged total</div></div>`;
+  const cl=settings.cycleLen,pl=settings.periodLen,ovD=Math.round(cl-14);
+  document.getElementById('cycleBar').innerHTML=[
+    {c:'#f5dde3',d:pl},{c:'#e8e8f0',d:ovD-5-pl},{c:'#ddeee3',d:5},{c:'#fdefd5',d:2},{c:'#e8e2f5',d:cl-ovD-2}
+  ].filter(s=>s.d>0).map(s=>`<div class="cycle-seg" style="background:${s.c};flex:${s.d}"></div>`).join('');
+  const recent=all.slice(-10).reverse();
+  document.getElementById('moodHistory').innerHTML=recent.length?recent.map(([ds,v])=>{
+    const mL=(v.moods||[]).map(id=>MOODS.find(m=>m.id===id)).filter(Boolean).map(m=>m.emoji+' '+m.label).join(', ');
+    const d=pDate(ds);
+    return`<div class="insight-card"><div class="insight-icon">${(v.moods||[]).length?MOODS.find(m=>m.id===v.moods[0])?.emoji||'📅':'📅'}</div><div><div class="insight-title">${d.toLocaleDateString('en',{month:'short',day:'numeric'})}</div><div class="insight-desc">${mL||'No mood logged'}${v.symptoms?.length?' · '+v.symptoms.slice(0,2).join(', '):''}${v.notes?' · '+v.notes:''}</div></div></div>`;
+  }).join(''):`<div class="insight-card"><div class="insight-icon">📋</div><div><div class="insight-title">No logs yet</div><div class="insight-desc">Start logging on the Today tab to see your history here.</div></div></div>`;
+}
+
+// Insights
+function renderInsights(){
+  const p=cyclePhase(todayStr(0)),next=nextPeriodIn();
+  let pos=diffD(settings.lastPeriod||todayStr(-28),todayStr(0))%settings.cycleLen;
+  if(pos<0)pos+=settings.cycleLen;
+  const ovD=Math.round(settings.cycleLen-14),dToOv=((ovD-pos)+settings.cycleLen)%settings.cycleLen;
+  const phDesc={period:'Your body is shedding the uterine lining. Rest, stay warm, and nourish yourself with iron-rich foods.',follicular:'Estrogen is rising — energy levels often increase. Good time for new projects and social activities.',fertile:'Your body is preparing for ovulation. Estrogen peaks and you may feel your most confident and social.',ovulation:'Luteinizing hormone surges. Some people experience mild discomfort on one side.',pms:'Progesterone is falling. Be gentle with yourself — rest, reduce salt and caffeine, and prioritize sleep.'};
+  const ins=[
+    {i:'🩸',t:'Next period',d:next!==null?`Predicted in approximately ${next} day${next===1?'':'s'}, around ${(()=>{const nd=new Date();nd.setDate(nd.getDate()+next);return nd.toLocaleDateString('en',{month:'long',day:'numeric'})})()}.`:'Set your last period date in Settings to get predictions.'},
+    {i:'✨',t:'Ovulation window',d:dToOv<7?`Ovulation is predicted in ${dToOv} day${dToOv===1?'':'s'}. Your fertile window is the 5 days before and 1 day after.`:`Ovulation is expected in about ${dToOv} days.`},
+    {i:'💊',t:`You're in the ${p||'—'} phase`,d:phDesc[p]||'Log your cycle regularly for personalised insights.'},
+    {i:'🌡️',t:'Symptom tip',d:'Tracking symptoms regularly helps you spot patterns. If you notice unusual pain or heavy bleeding, consider speaking with a healthcare provider.'},
+    {i:'💧',t:'Hydration',d:'Drinking plenty of water helps with bloating, cramps, and overall energy throughout your cycle.'},
+    {i:'😴',t:'Sleep & cycle',d:'Sleep quality often shifts with your cycle. Many people sleep best in the follicular phase and more lightly during PMS.'},
+  ];
+  document.getElementById('insightList').innerHTML=ins.map(x=>`<div class="insight-card"><div class="insight-icon">${x.i}</div><div><div class="insight-title">${x.t}</div><div class="insight-desc">${x.d}</div></div></div>`).join('');
+}
+
+// Mystic
+function initMystic(){
+  document.getElementById('mysticDate').value=todayStr(0);
+  updateMoonCard(todayStr(0));
+}
+// Mystic readings data
+const MOON_READINGS={
+  'New Moon':["A seed is planted in the dark. This is a time of quiet intention — breathe in what you wish to call forward, and trust the unseen roots taking hold beneath the surface.","The New Moon invites you inward. Like the tide drawing back before it rushes in, this is a moment to gather your energy before the next wave of becoming.","Something is beginning, even if you cannot yet see it. The New Moon holds your wishes like a closed hand — open it slowly, with faith."],
+  'Waxing Crescent':["The crescent appears like a whisper of what is to come. Your intentions from the New Moon are stirring — tend to them gently, with patience and belief.","A sliver of light cuts the dark sky. What you have asked for is beginning its journey toward you. Keep your vision clear and your heart open.","Growth is quiet at first. The waxing crescent asks you to nurture your dreams as you would a tender seedling — with care, water, and steady light."],
+  'First Quarter':["The moon stands at a crossroads, half in shadow, half in light. A decision asks to be made. Trust what you already know in your bones.","Tension is not always a sign of something wrong — sometimes it is the feeling of becoming. The First Quarter moon calls you to push through resistance with courage.","Action is needed now. The First Quarter illuminates the path ahead — take one bold step forward and let momentum carry the rest."],
+  'Waxing Gibbous':["You are so close. The nearly-full moon pulses with anticipation, urging you to refine, adjust, and prepare. The harvest is almost within reach.","Patience is its own kind of power. The Waxing Gibbous asks you to hold steady just a little longer — everything is ripening beautifully.","The light is growing stronger each night. Trust the process that has brought you this far. You are exactly where you are meant to be."],
+  'Full Moon':["The Full Moon pours its silver light over everything, illuminating what was hidden. What truth has been waiting quietly in the shadows for you to see?","Under the full and luminous moon, emotions rise like the tide. Let yourself feel fully — nothing needs to be suppressed or solved tonight. Just breathe, and be.","This is a moment of completion and release. The Full Moon celebrates how far you have come. Honour yourself with the same grace you offer others."],
+  'Waning Gibbous':["The light begins its gentle retreat. This is the time of gratitude — for lessons learned, for strength discovered, for the person you are becoming.","After the fullness comes the beautiful release. Like an exhale after a long breath held, the Waning Gibbous invites you to let go of what no longer serves you.","Share your wisdom freely now. What you have gathered in this cycle is meant to flow outward, like a river returning to the sea."],
+  'Last Quarter':["The Last Quarter moon asks a quiet question: what are you ready to release? Some things have served their purpose and deserve a gentle, grateful farewell.","Stand in your power even as the light diminishes — the moon does not apologise for waning. Neither should you for rest, for stillness, for needing space.","This is the time for honest reflection. Look back without judgment. Every experience, even the difficult ones, has shaped the extraordinary person you are."],
+  'Waning Crescent':["The Balsamic moon is the oldest, wisest sliver of light. Rest now. Dream now. Allow yourself the luxury of simply being, without producing, without striving.","In the hush before the New Moon, the Waning Crescent asks you to surrender. Not in defeat, but in trust — knowing that emptiness always precedes a beautiful new beginning.","This is sacred rest. The moon herself takes this time to turn inward before she shines again. You are allowed to do the same."],
+};
+const ASTRO_READINGS={
+  'New Moon':["The cosmos holds its breath in anticipation. Celestial energy gathers like stormwater before rain — charged, pregnant with possibility, ready to be directed by your will.","In the astronomical dark, the stars feel closer. The absence of moonlight makes the universe's depth more visible. You are a small, luminous point in an infinite, beautiful expanse.","New Moon energy supports beginnings. The gravitational pull is shifting — feel it in your body, in your intuitions, in the quiet stirrings of what you want your life to become."],
+  'Waxing Crescent':["The crescent moon rises in the western sky just after sunset, a delicate arc of reflected sunlight. The cosmos is literally growing brighter, and so are you.","As the illuminated portion of the moon expands night by night, the celestial energy amplifies. Ride this building wave — it carries momentum and bright possibility.","Venus and the young crescent often dance together in the evening sky. Love, beauty, and creative energy are woven through the air. Open your senses to them."],
+  'First Quarter':["The moon stands at 90 degrees from the Sun — a right angle of cosmic tension that creates the conditions for decisive action. The stars are aligned for bold moves.","Half the moon glows with fierce reflected light. Astronomically, this is a moment of dynamic tension between the Sun's pull and the moon's orbit. Channel that tension into momentum.","The square aspect between Sun and Moon in the sky creates a productive friction. Like two stones striking together, this energy makes sparks — use them to ignite something."],
+  'Waxing Gibbous':["The moon rises earlier each night, flooding the darkness with growing light. The celestial tide is rising. Your efforts are being amplified by the very sky above you.","Nearly full, the moon outshines all but the brightest stars. The cosmos is concentrating its luminous energy, building toward a peak of illumination and possibility.","Astronomically, this is one of the brightest phases of the lunar cycle. The night sky itself is a mirror for your expanding potential."],
+  'Full Moon':["The Full Moon occurs when Earth sits directly between Sun and Moon — you are the living bridge between two great luminaries. Feel the cosmic electricity of that alignment.","At perigee, the Full Moon can appear 14% larger and 30% brighter than usual. Tonight the universe turns up its light to full brightness, just for you.","The gravitational forces of a Full Moon affect the tides of every ocean on Earth. Your body — mostly water — feels this pull too. The cosmos is tugging you toward wholeness."],
+  'Waning Gibbous':["The moon rises later each night, the sky's great lantern gradually dimming as it moves toward rest. This is the astronomy of release — even light itself knows how to let go.","After the peak comes the beautiful descent. The moon's orbital path continues its eternal dance, teaching us that every fullness is followed by graceful emptiness.","The stars that were hidden by the Full Moon's brightness begin to reappear. In the dimming, new things become visible. What can you see now that the brightness has softened?"],
+  'Last Quarter':["The moon rises at midnight, a perfect half-illuminated face looking backward at where it came from. The cosmos models reflection, review, and honest accounting.","Astronomically, the Last Quarter creates another dynamic square between Sun and Moon — but this tension invites release rather than action. The stars support letting go.","The moon is now visible in the pre-dawn sky, keeping company with the stars of early morning. This is the sky of quiet courage and clear-eyed honesty."],
+  'Waning Crescent':["The thin crescent rises just before the Sun in the early morning sky — the moon's last whisper before silence. The cosmos is preparing for renewal, and so are you.","Astronomically, this is the final phase before conjunction — when moon meets Sun and a new cycle begins. You stand at the threshold between one story and the next.","The Balsamic moon moves through the pre-dawn darkness. In astronomy as in life, the darkest moment precedes the new light. Trust what is coming."],
+};
+const TAROT_READINGS={
+  'The Fool':["The Fool leaps from the cliff's edge with a flower in hand and joy in his heart. Today, the universe invites you to embrace the beautiful, terrifying freedom of a new beginning — trust your wings.",
+    "There is wisdom in not knowing everything before you begin. The Fool's energy asks you to take that first step with innocence and courage, before fear has a chance to talk you out of it.",
+    "The Fool carries only what he truly needs. Consider what you might joyfully leave behind today — the lightness you gain could carry you further than you imagine."],
+  'The Magician':["All four elements stand on the Magician's table: earth, air, fire, water. Everything you need is already within you. Today is a day to remember your own remarkable power.",
+    "The Magician channels energy from above and directs it below — as above, so below. What you focus on expands. Turn your full attention to what you wish to create.",
+    "This card speaks of skill, will, and creative power. You have more tools than you realise. Today, pick one up and begin."],
+  'The High Priestess':["The High Priestess sits between two pillars, keeper of hidden knowledge. She speaks not in words but in feelings. Today, trust what you sense more than what you can prove.",
+    "Still water runs deep. The High Priestess invites you beneath the surface of things — into the quiet knowing that lives below logic, below language, below fear.",
+    "Something is revealing itself to you slowly, in the language of intuition. The High Priestess asks you to be patient with what you cannot yet fully see or name."],
+  'The Empress':["The Empress is abundance itself — she is every flower, every harvest, every warm embrace. Today you are invited to nourish yourself as tenderly as you nourish others.",
+    "Creation flows through you as naturally as breath. The Empress reminds you that beauty, pleasure, and rest are not indulgences — they are the soil from which your best work grows.",
+    "You are deeply connected to the rhythms of nature and your own body today. The Empress honours your cycles, your sensitivity, and the extraordinary life you carry within you."],
+  'The Emperor':["Structure and stability are gifts, not cages. The Emperor asks you to build something solid today — a plan, a boundary, a foundation you can stand on with confidence.",
+    "Your authority over your own life is real and powerful. The Emperor encourages you to lead yourself with the same strength and compassion you would offer someone you deeply respect.",
+    "There is a time for flow and a time for form. Today the Emperor offers the wisdom of discipline — not as punishment, but as the riverbank that gives direction to the current."],
+  'The Hierophant':["The Hierophant bridges the sacred and the everyday. Today you are invited to find meaning in your routines, ritual in your ordinary moments, and grace in the familiar.",
+    "There is wisdom in tradition and in the teachers who came before. The Hierophant asks: whose knowledge can you honour and draw upon today?",
+    "Belonging to something larger than yourself brings its own kind of strength. The Hierophant speaks of community, shared values, and the comfort of knowing you are not alone on the path."],
+  'The Lovers':["The Lovers speak not only of romance but of choice — of aligning your outer life with your innermost values. What decision today asks you to choose in favour of your truest self?",
+    "Where head and heart are divided, The Lovers ask you to listen to both — not to choose one over the other, but to find the place where they can hold hands and walk forward together.",
+    "Connection is the medicine this card offers. Whether with another person, a creative practice, or your own soul — open your arms and let something beautiful in."],
+  'The Chariot':["The Chariot races forward, held on course not by force but by focused will. You have the strength to move through whatever stands in your path today — steady, determined, unstoppable.",
+    "Victory requires direction, not just speed. The Chariot asks you to get clear on where you are going before you pour your magnificent energy into the journey.",
+    "You are more capable than your doubts suggest. The Chariot is the card of earned triumph — and everything you have been through has been preparing you for exactly this moment."],
+  'Strength':["True strength is not the absence of fear or vulnerability — it is moving forward anyway, with an open heart. Today you are braver than you know.",
+    "The woman in the Strength card tames the lion not with force but with love. The gentlest approach is often the most powerful. What softness might serve you better than struggle today?",
+    "Your quiet endurance is its own kind of heroism. Strength honours the extraordinary courage it takes to keep going, keep feeling, keep showing up — day after tender day."],
+  'The Hermit':["The Hermit walks alone, lantern raised, lighting just enough path for the next step. You do not need to see the whole road — only the step directly in front of you.",
+    "There is wisdom waiting in your own silence. The Hermit asks you to step back from the noise today and listen to the quiet counsel of your own deepest knowing.",
+    "Solitude chosen consciously is a gift, not a punishment. The Hermit finds richness in stillness. Today, a moment of true aloneness might illuminate more than a day of company."],
+  'Wheel of Fortune':["The wheel turns whether we spin it or not. Fortune is shifting in your favour — be ready to recognise opportunity when it arrives, even in unexpected forms.",
+    "Nothing stays still forever — not the bad times, and not the good. The Wheel of Fortune asks you to find your centre, the still point around which everything else revolves.",
+    "There are forces at work beyond your control today, and that is not a frightening thing — it is a liberating one. Release what you cannot steer and trust the larger turning."],
+  'Justice':["Justice asks for honesty — not judgment, but clear-eyed truth. What situation in your life would benefit from being seen exactly as it is, without story or spin?",
+    "Cause and effect are always in motion. Justice invites you to consider: what seeds have you been planting, and what harvest might they be preparing to offer you?",
+    "You deserve fairness — in how others treat you, and in how you treat yourself. Justice reminds you that self-compassion is not weakness; it is the foundation of everything sustainable."],
+  'The Hanged Man':["The Hanged Man hangs willingly, seeing the world from a completely new angle. Today's pause is not a setback — it is an invitation to perceive something you have been missing.",
+    "Surrender is not defeat. The Hanged Man has discovered that releasing control opens a door that straining never could. What might you gain by letting go?",
+    "Rest is productive. The Hanged Man suspends action to gain wisdom — and emerges knowing something essential he could not have learned any other way. What is your waiting teaching you?"],
+  'Death':["The Death card is rarely about endings — it is about transformation so complete that what emerges is almost unrecognisable from what entered. What are you in the beautiful process of becoming?",
+    "Something is completing its cycle to make space for something new. The Death card asks you to release the old version of yourself with gratitude rather than grief.",
+    "Every sunset is a kind of dying — and every sunrise is the same soul, transformed. The Death card speaks of the courage it takes to change, and the beauty that waits on the other side."],
+  'Temperance':["Temperance pours water between two cups in an endless, balanced flow. You are being called toward equilibrium today — not perfection, but the gentle art of enough.",
+    "Alchemy happens in the in-between spaces. Temperance blends opposites into something neither element could become alone. What in your life might benefit from a more patient, careful mixing?",
+    "Moderation is its own kind of magic. Temperance asks you to move at the pace of your deepest wisdom today — not too fast, not too slow, but exactly right."],
+  'The Devil':["The Devil card reveals the chains we sometimes choose — the patterns, comforts, and stories that bind us more than we admit. Look clearly today: are any of your chains holding you back?",
+    "Shadow work is sacred work. The Devil asks you to meet the parts of yourself you have been avoiding — not to be consumed by them, but to reclaim the energy they have been holding.",
+    "The figures in the Devil card could remove their chains at any moment. Today's question is: what are you more attached to than you'd like to admit — and what would freedom actually feel like?"],
+  'The Tower':["Something is being cleared — swiftly, completely, and with purpose. The Tower does not destroy what was built on solid ground. What remains after the storm is what was always real.",
+    "Sudden change can feel like devastation and arrive as liberation. The Tower asks you to release your grip on what was never truly yours to hold.",
+    "From the rubble of old structures, something truer is already beginning to rise. The Tower is not an ending — it is the shock of necessary honesty, making space for something better."],
+  'The Star':["After every storm, the Star appears. She pours her water freely, without fear of running dry, trusting the sky to replenish her. Today you are invited to do the same — give and trust.",
+    "The Star is one of the most healing cards in the deck. She speaks of hope that is not naive but earned — the quiet, steady knowing that things can and will be good again.",
+    "You are being seen and guided by something larger than your worry. The Star asks you to look up tonight, to remember your place in the vast and tender universe, and to rest in that belonging."],
+  'The Moon':["The Moon illuminates without fully revealing, casting beautiful shadows across the path. Not everything needs to be clear right now — some wisdom arrives only through the mystery.",
+    "The unconscious speaks in symbols, dreams, and feelings that don't quite make sense yet. The Moon asks you to follow your instincts today even when you cannot explain them.",
+    "What you cannot see clearly may still be guiding you truly. The Moon honours the wisdom of the uncertain, the half-known, the feeling that something important is moving just beyond the light."],
+  'The Sun':["The Sun rises the same way every morning — without doubt, without hesitation, without apology for its brightness. Today you are invited to shine with the same fearless generosity.",
+    "Joy is not frivolous — it is essential. The Sun card reminds you that happiness is not something to earn or postpone. It is available right now, in this moment, if you choose to notice it.",
+    "Children play in the Sun's card without self-consciousness, fully alive in the present moment. Today you are invited back to that wholeness — radiant, free, and completely yourself."],
+  'Judgement':["Judgement sounds its clear, ringing call: it is time to rise into the fullest version of who you are. Not who you think you should be — but who you actually, beautifully are.",
+    "Something within you is awakening. Judgement marks the moment of spiritual maturity — the willingness to honestly review the past, forgive it fully, and step forward renewed.",
+    "You are being called to a higher version of your life. Judgement asks: what would you do, how would you live, who would you be — if you truly believed you were worthy of it?"],
+  'The World':["The World card is the great completion — the dancer in the wreath has integrated all four elements, all seasons, all aspects of herself. You have come so far. Honour that.",
+    "This is a card of wholeness achieved. Not perfection — wholeness. The World celebrates the you that has survived, learned, grown, and arrived at this particular moment intact and luminous.",
+    "One cycle completes and another breathes its first breath. The World stands at the threshold between what was and what is becoming — and invites you to celebrate both."],
+  'Ace of Cups':["A cup overflows with light and feeling. The Ace of Cups is the universe offering you a fresh start in matters of the heart — accept this gift with both hands open.",
+    "New emotional beginnings stir in the deep water of the Ace of Cups. Something tender is opening in you. Give it permission to bloom.",
+    "Love in all its forms — romantic, creative, spiritual, self-directed — is available to you now. The Ace of Cups asks only that you be willing to receive it."],
+  'Two of Cups':["Two cups meet in a gesture of mutual recognition. The Two of Cups speaks of connection, partnership, and the magic that happens when two people truly see each other.",
+    "Reciprocity is its own kind of miracle. The Two of Cups honours the relationships in your life where energy flows both ways — where you are both seen and nourished.",
+    "A meaningful connection is either deepening or approaching. Open your heart to the possibility of being known — and of knowing another — more fully than before."],
+  'Three of Cups':["Friends raise their cups in celebration and the Three of Cups rings out with joyful sound. Today is for connection, laughter, and the particular magic of being among people who truly know you.",
+    "Community is medicine. The Three of Cups reminds you that you are not meant to carry everything alone — let yourself be held by the people who love you.",
+    "Celebration needs no grand occasion. The Three of Cups invites you to mark the ordinary joys — the good conversation, the shared meal, the moment of real laughter — with reverence."],
+  'Six of Wands':["You have done something worth acknowledging. The Six of Wands rides through the crowd as a reminder: your achievements are real, your efforts have mattered, you deserve to hold your head high.",
+    "Recognition may come today — from others, or more importantly, from yourself. The Six of Wands asks you to receive praise gracefully, without deflecting or diminishing what you have earned.",
+    "Victory is sweeter when shared. The Six of Wands celebrates not only achievement but the community that witnessed and supported the journey. Who helped you get here?"],
+  'Seven of Cups':["Seven cups float in a dreamy cloud, each holding something different and alluring. The Seven of Cups asks: which visions are truly yours, and which are distractions dressed in beautiful clothes?",
+    "Imagination is a gift and also a wilderness. The Seven of Cups asks you to gently sort through your dreams today — to distinguish between what you truly desire and what you merely want to want.",
+    "Not all that glitters is gold, but some of it is. The Seven of Cups encourages discernment — not cynicism, but the clear-eyed wisdom that knows which cup holds the real treasure."],
+  'Eight of Pentacles':["The craftsperson works alone, focused, unhurried, devoted to the quality of every stroke. The Eight of Pentacles honours the quiet dignity of doing good work, day after ordinary day.",
+    "Mastery is built in the repetition. The Eight of Pentacles speaks of the practice — not the performance. Today, return to the work with fresh eyes and patient hands.",
+    "There is deep satisfaction in craft. The Eight of Pentacles invites you to find the flow state today — that place where skill and effort align and time disappears pleasantly."],
+  'Nine of Swords':["The Nine of Swords shows us the anxiety that visits in the dark hours — and reminds us that the sword on the wall has not moved. The fear is real; the danger, perhaps, is not.",
+    "Your mind is a powerful storyteller, and not all its stories are true. The Nine of Swords gently asks: is the suffering you feel right now about what is happening, or about what you fear might happen?",
+    "You are not alone in the night. The Nine of Swords sits with you in the hard hours — not to fix or dismiss what you feel, but to remind you that morning has always, without exception, come."],
+  'Ten of Cups':["The Ten of Cups paints the sky with a rainbow and fills the scene with people who love each other. This is the card of emotional fulfilment — of home, however you define it.",
+    "Joy that is shared multiplies. The Ten of Cups celebrates the relationships and moments of genuine happiness in your life — and invites you to let yourself fully inhabit them.",
+    "This is enough. This moment, this love, this ordinary beautiful life — it is enough. The Ten of Cups asks you to let that truth land somewhere deep and stay there."],
+};
+const CYCLE_ASTRO={
+  period:"Mars and the moon align in a deep, cleansing opposition. The body knows what the mind sometimes resists — this is a time for sacred rest, not productivity. The cosmos fully supports your withdrawal.",
+  follicular:"Mercury quickens and spring energy stirs in the celestial sphere. Ideas move faster, connections spark more easily, and the universe seems to lean forward in encouragement. Begin.",
+  fertile:"Venus reaches her zenith and the stars align in a rare configuration of magnetic attraction. Your creative and social energy is amplified by cosmic forces — radiate freely.",
+  ovulation:"The Sun and Jupiter form a conjunction of abundance and bold expression. The cosmos turns its full, generous attention toward you. Step into the light without apology.",
+  pms:"Saturn and Neptune weave together in a dreaming, inward aspect. The stars support deep feeling, creative solitude, and the kind of honest self-reflection that leads to real transformation.",
+  follicular2:"The North Node moves through fertile territory. The universe is actively supporting your growth right now — what you plant today has cosmic backing.",
+};
+
+function pickReading(arr,ds){
+  const hash=ds.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  // Use day of month to vary which reading is picked
+  const d=pDate(ds).getDate();
+  return arr[(hash+d)%arr.length];
+}
+
+function generateReading(){
+  const ds=document.getElementById('mysticDate').value||todayStr(0);
+  updateMoonCard(ds);
+  const moon=moonPhase(ds);
+  const hash=ds.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const card=TAROT[hash%TAROT.length];
+  const phase=cyclePhase(ds)||'follicular';
+
+  // Moon reading
+  const moonReadings=MOON_READINGS[moon.n]||MOON_READINGS['Full Moon'];
+  document.getElementById('moonBody').textContent=pickReading(moonReadings,ds);
+
+  // Astro reading — blend moon astro with cycle astro
+  const astroReadings=ASTRO_READINGS[moon.n]||ASTRO_READINGS['Full Moon'];
+  const cycleAstro=CYCLE_ASTRO[phase]||CYCLE_ASTRO['follicular'];
+  const astroBase=pickReading(astroReadings,ds);
+  document.getElementById('astroBody').textContent=astroBase+' '+cycleAstro;
+
+  // Tarot reading
+  const tarotReadings=TAROT_READINGS[card.name];
+  if(tarotReadings){
+    document.getElementById('tarotBody').textContent=pickReading(tarotReadings,ds);
+  } else {
+    document.getElementById('tarotBody').textContent=`${card.name} appears today as your guide — a card of deep meaning and personal truth. Sit quietly with its image and notice what stirs in you.`;
+  }
+}
+
+// Settings
+function loadSettings(){
+  document.getElementById('settingCycleLen').value=settings.cycleLen;
+  document.getElementById('settingPeriodLen').value=settings.periodLen;
+  document.getElementById('settingLastPeriod').value=settings.lastPeriod||'';
+}
+document.getElementById('saveSettings').onclick=()=>{
+  settings.cycleLen=parseInt(document.getElementById('settingCycleLen').value)||28;
+  settings.periodLen=parseInt(document.getElementById('settingPeriodLen').value)||5;
+  settings.lastPeriod=document.getElementById('settingLastPeriod').value||settings.lastPeriod;
+  store('luna_settings',settings);renderCal();renderPhaseStrip();renderHeaderPhase();showToast('✓ Settings saved!');
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify({settings,logs},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`luna-export-${todayStr(0)}.json`;a.click();
+};
+document.getElementById('clearBtn').onclick=()=>{
+  if(confirm('Delete all logs permanently? This cannot be undone.')){logs={};store('luna_logs',logs);showToast('All data cleared')}
+};
+
+// Nav
+function switchView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='stats')renderStats();
+  if(name==='insights')renderInsights();
+  if(name==='mystic')initMystic();
+  if(name==='settings')loadSettings();
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+// Init
+renderCal();
+renderPhaseStrip();
+renderHeaderPhase();
+renderInsights();
+selectDay(selDate);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
