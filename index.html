@@ -1,345 +1,543 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Luna Mystic</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Luna — Cycle & Mood Tracker</title>
 
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c4637a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Luna">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body{
-margin:0;
-font-family:Arial, Helvetica, sans-serif;
-background:black;
-color:white;
-text-align:center;
-overflow-x:hidden;
-}
+  :root {
+    --rose:       #c4637a;
+    --rose-light: #e8a0b0;
+    --rose-pale:  #f5dde3;
+    --mauve:      #7b5e7b;
+    --cream:      #fdf8f4;
+    --parchment:  #f0e8df;
+    --ink:        #2d2028;
+    --muted:      #9e8a94;
+    --white:      #ffffff;
+    --period:     #c4637a;
+    --fertile:    #7ba68a;
+    --ovulation:  #e8a83d;
+    --pms:        #8e7bb5;
+    --today-ring: #c4637a;
+  }
 
-/* stars */
+  html { font-size: 16px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-.stars{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-z-index:-1;
-}
+  /* BG texture */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 10%, #f0d8df55 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 90% 80%, #ddd0ea44 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
 
-.star{
-position:absolute;
-width:2px;
-height:2px;
-background:white;
-border-radius:50%;
-animation:twinkle 4s infinite;
-}
+  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 100px; }
 
-@keyframes twinkle{
-0%,100%{opacity:.2}
-50%{opacity:1}
-}
+  /* Header */
+  header {
+    padding: 36px 24px 16px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem; font-weight: 300; letter-spacing: 0.04em;
+    color: var(--rose); line-height: 1;
+  }
+  .brand-tagline { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+  .header-phase {
+    text-align: right;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem; color: var(--mauve); font-style: italic;
+  }
 
-/* crystal ball */
+  /* Phase strip */
+  .phase-strip {
+    display: flex; gap: 8px; padding: 0 24px 20px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .phase-strip::-webkit-scrollbar { display: none; }
+  .phase-tag {
+    flex-shrink: 0;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 0.72rem; letter-spacing: 0.08em; font-weight: 500;
+    cursor: default;
+  }
+  .phase-tag.period   { background: #f5dde3; color: var(--rose); }
+  .phase-tag.fertile  { background: #ddeee3; color: #4a7a58; }
+  .phase-tag.ovulation{ background: #fdefd5; color: #a06b10; }
+  .phase-tag.pms      { background: #e8e2f5; color: var(--mauve); }
+  .phase-tag.luteal   { background: #e8e8f0; color: #5a5472; }
 
-.crystal-container{
-margin-top:40px;
-}
+  /* Section titles */
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem; font-weight: 400; color: var(--ink);
+    padding: 0 24px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(to right, var(--rose-light), transparent);
+  }
 
-.crystal-ball{
-font-size:80px;
-cursor:pointer;
-animation:float 3s ease-in-out infinite;
-filter:drop-shadow(0 0 15px violet);
-}
+  /* Calendar */
+  .calendar-wrap { padding: 0 24px; margin-bottom: 28px; }
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cal-month {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem; font-weight: 400; color: var(--ink);
+  }
+  .cal-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--rose-light); background: var(--white);
+    color: var(--rose); font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .cal-btn:hover { background: var(--rose-pale); }
 
-@keyframes float{
-0%{transform:translateY(0)}
-50%{transform:translateY(-10px)}
-100%{transform:translateY(0)}
-}
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-dow {
+    text-align: center; font-size: 0.65rem; letter-spacing: 0.1em;
+    color: var(--muted); padding-bottom: 6px; text-transform: uppercase;
+  }
+  .cal-day {
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 0.82rem; cursor: pointer;
+    position: relative; transition: all 0.15s;
+    user-select: none; gap: 0px;
+  }
+  .cal-moon { font-size: 0.45rem; line-height: 1; opacity: 0.75; }
+  .cal-day:hover:not(.empty) { background: var(--rose-pale); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.today {
+    box-shadow: 0 0 0 2px var(--today-ring);
+    font-weight: 500;
+  }
+  .cal-day.period-day   { background: #f5dde3; color: var(--rose); font-weight: 500; }
+  .cal-day.fertile-day  { background: #ddeee3; color: #3a6a48; }
+  .cal-day.ovulation-day{ background: #fdefd5; color: #a06b10; font-weight: 500; }
+  .cal-day.pms-day      { background: #e8e2f5; color: var(--mauve); }
+  .cal-day.logged-mood::after {
+    content: '';
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--mauve);
+  }
+  .cal-day.selected-day {
+    box-shadow: 0 0 0 2px var(--ink);
+  }
 
-.crystal-active{
-animation:pulse 1.5s ease;
-}
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    padding: 8px 24px 0;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--muted); }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
 
-@keyframes pulse{
-0%{transform:scale(1)}
-50%{transform:scale(1.4)}
-100%{transform:scale(1)}
-}
+  /* Log panel */
+  .log-panel {
+    margin: 24px 24px 0;
+    background: var(--white);
+    border-radius: 20px;
+    border: 1px solid var(--rose-pale);
+    overflow: hidden;
+    box-shadow: 0 4px 24px #c4637a12;
+  }
+  .log-panel-header {
+    background: linear-gradient(135deg, var(--rose-pale), #ede4f0);
+    padding: 16px 20px 12px;
+  }
+  .log-panel-date {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem; color: var(--ink);
+  }
+  .log-panel-body { padding: 18px 20px; }
 
-.card{
-background:#111;
-border-radius:14px;
-padding:20px;
-margin:20px auto;
-max-width:500px;
-box-shadow:0 0 15px rgba(255,255,255,.1);
-}
+  /* Toggle row */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--parchment);
+  }
+  .toggle-row:last-of-type { border-bottom: none; }
+  .toggle-label { font-size: 0.88rem; color: var(--ink); }
+  .toggle-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
 
-.tarot-deck{
-display:flex;
-justify-content:center;
-gap:6px;
-margin:20px;
-}
+  /* Toggle switch */
+  .toggle {
+    position: relative; width: 42px; height: 24px; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; cursor: pointer;
+    background: var(--parchment); border-radius: 24px;
+    transition: background 0.2s;
+  }
+  .slider::before {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; border-radius: 50%;
+    left: 3px; top: 3px; background: white;
+    box-shadow: 0 1px 4px #0002;
+    transition: transform 0.2s;
+  }
+  input:checked + .slider { background: var(--rose); }
+  input:checked + .slider::before { transform: translateX(18px); }
 
-.tarot-card{
-width:60px;
-height:100px;
-border-radius:10px;
-background:linear-gradient(145deg,#2b1f3a,#120a1d);
-border:2px solid #a88cff;
-}
+  /* Mood selector */
+  .mood-section { margin-top: 16px; }
+  .mood-label { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  .mood-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mood-btn {
+    padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--parchment);
+    background: var(--cream); color: var(--muted);
+    font-size: 0.8rem; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+  }
+  .mood-btn:hover { border-color: var(--rose-light); color: var(--rose); }
+  .mood-btn.active {
+    background: var(--rose-pale); border-color: var(--rose);
+    color: var(--rose); font-weight: 500;
+  }
 
-.shuffle .tarot-card{
-animation:shuffle .8s infinite;
-}
+  /* Symptoms */
+  .symptom-section { margin-top: 16px; }
+  .symptom-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .symptom-btn {
+    padding: 6px 12px; border-radius: 16px; border: 1.5px solid var(--parchment);
+    background: var(--cream); color: var(--muted);
+    font-size: 0.75rem; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .symptom-btn:hover { border-color: var(--mauve); color: var(--mauve); }
+  .symptom-btn.active {
+    background: #e8e2f5; border-color: var(--mauve);
+    color: var(--mauve);
+  }
 
-@keyframes shuffle{
-0%{transform:rotate(-10deg)}
-50%{transform:rotate(10deg)}
-100%{transform:rotate(-10deg)}
-}
+  /* Flow intensity */
+  .flow-section { margin-top: 16px; }
+  .flow-btns { display: flex; gap: 8px; }
+  .flow-btn {
+    flex: 1; padding: 10px 6px; border-radius: 14px;
+    border: 1.5px solid var(--parchment);
+    background: var(--cream); color: var(--muted);
+    font-size: 0.72rem; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.18s; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .flow-btn:hover { border-color: var(--rose-light); background: var(--rose-pale); }
+  .flow-btn.active { background: var(--rose-pale); border-color: var(--rose); color: var(--rose); }
+  .flow-drops { display: flex; gap: 2px; justify-content: center; }
+  .drop {
+    width: 14px; height: 18px;
+    background: var(--parchment);
+    clip-path: polygon(50% 0%, 80% 40%, 100% 65%, 85% 90%, 15% 90%, 0% 65%, 20% 40%);
+    transition: background 0.18s;
+  }
+  .flow-btn.active .drop  { background: var(--rose); }
+  .flow-btn:hover .drop   { background: var(--rose-light); }
+  .drop.dim { opacity: 0.25; }
 
-.reveal{
-animation:reveal .7s ease forwards;
-}
+  /* Notes */
+  .notes-section { margin-top: 16px; }
+  .notes-input {
+    width: 100%; border: 1.5px solid var(--parchment);
+    border-radius: 12px; padding: 10px 14px;
+    font-size: 0.82rem; font-family: 'DM Sans', sans-serif;
+    color: var(--ink); background: var(--cream);
+    resize: none; outline: none; line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+  .notes-input:focus { border-color: var(--rose-light); }
+  .notes-input::placeholder { color: var(--muted); }
 
-@keyframes reveal{
-0%{transform:scale(.6) rotateY(90deg);opacity:0}
-100%{transform:scale(1.1) rotateY(0);opacity:1}
-}
+  /* Save button */
+  .save-btn {
+    margin-top: 18px; width: 100%;
+    padding: 13px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--rose), var(--mauve));
+    color: white; border: none; font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; font-weight: 500; cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 4px 16px #c4637a30;
+  }
+  .save-btn:hover { opacity: 0.9; }
+  .save-btn:active { transform: scale(0.98); }
 
-.icon{
-font-size:40px;
-margin:10px;
-}
+  /* Stats section */
+  .stats-wrap { padding: 0 24px; margin-bottom: 28px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card {
+    background: var(--white); border-radius: 16px;
+    padding: 16px; border: 1px solid var(--parchment);
+    box-shadow: 0 2px 12px #0000040a;
+  }
+  .stat-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem; font-weight: 300; color: var(--rose); line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; }
 
+  /* Cycle prediction bar */
+  .cycle-bar-wrap {
+    margin: 0 24px 28px;
+    background: var(--white); border-radius: 16px;
+    padding: 18px; border: 1px solid var(--parchment);
+  }
+  .cycle-bar-title {
+    font-size: 0.75rem; color: var(--muted);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px;
+  }
+  .cycle-bar {
+    display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px;
+  }
+  .cycle-seg {
+    height: 100%; border-radius: 3px; transition: flex 0.3s;
+  }
+  .cycle-bar-legend {
+    display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .cbl-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--muted); }
+  .cbl-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--ink); color: white;
+    padding: 11px 22px; border-radius: 24px; font-size: 0.82rem;
+    box-shadow: 0 6px 24px #0004;
+    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+    opacity: 0; z-index: 100; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Nav */
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--white); border-top: 1px solid var(--rose-pale);
+    display: flex; justify-content: space-around; padding: 10px 0 16px;
+    z-index: 10;
+  }
+  .nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 0.62rem; color: var(--muted); cursor: pointer;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    background: none; border: none; font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s;
+  }
+  .nav-btn.active { color: var(--rose); }
+  .nav-btn svg { width: 20px; height: 20px; }
+
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Insights */
+  .insight-list { padding: 0 24px; display: flex; flex-direction: column; gap: 12px; }
+  .insight-card {
+    background: var(--white); border-radius: 16px;
+    padding: 16px 18px; border: 1px solid var(--parchment);
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .insight-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .insight-title { font-size: 0.88rem; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+  .insight-desc  { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+  /* Settings */
+  .settings-wrap { padding: 0 24px; }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid var(--parchment);
+  }
+  .setting-label { font-size: 0.9rem; color: var(--ink); }
+  .setting-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .setting-input {
+    width: 60px; border: 1.5px solid var(--parchment); border-radius: 8px;
+    padding: 5px 8px; font-size: 0.9rem; text-align: center;
+    font-family: 'DM Sans', sans-serif; color: var(--ink);
+    background: var(--cream); outline: none;
+  }
+  .setting-input:focus { border-color: var(--rose-light); }
+
+  .period-start-btn {
+    padding: 8px 16px; border-radius: 12px;
+    background: var(--rose-pale); border: 1.5px solid var(--rose);
+    color: var(--rose); font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem; cursor: pointer; transition: background 0.15s;
+  }
+  .period-start-btn:hover { background: #eecdd5; }
+
+  /* Mystic tab */
+  .mystic-card {
+    margin: 0 24px 14px;
+    background: var(--white);
+    border-radius: 20px;
+    border: 1px solid var(--parchment);
+    overflow: hidden;
+    box-shadow: 0 2px 16px #7b5e7b0a;
+  }
+  .mystic-card-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px 12px;
+    background: linear-gradient(135deg, #f0e8f8, #f5dde3);
+    border-bottom: 1px solid var(--parchment);
+  }
+  .mystic-icon { font-size: 2rem; flex-shrink: 0; }
+  .mystic-card-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--ink); font-weight: 400; }
+  .mystic-card-sub   { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+  .mystic-body {
+    padding: 14px 18px 16px;
+    font-size: 0.85rem; color: var(--ink); line-height: 1.7;
+    font-family: 'Cormorant Garamond', serif; font-size: 1rem;
+    min-height: 60px;
+  }
+  .mystic-loading {
+    display: inline-block; opacity: 0.5;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .view.active > * { animation: fadeIn 0.3s ease both; }
 </style>
 </head>
-
 <body>
 
-<h1>Luna Mystic</h1>
-
-<div class="stars" id="stars"></div>
-
-<div class="crystal-container">
-<div class="crystal-ball" id="crystalBall">🔮</div>
-<p>Tap the crystal ball to reveal today's reading</p>
-</div>
-
-<div class="tarot-deck" id="tarotDeck">
-<div class="tarot-card"></div>
-<div class="tarot-card"></div>
-<div class="tarot-card"></div>
-<div class="tarot-card"></div>
-<div class="tarot-card"></div>
-</div>
-
-<div class="card">
-<h2 id="moonPhaseName">Moon</h2>
-<div class="icon" id="moonIcon">🌙</div>
-<p id="moonBody"></p>
-</div>
-
-<div class="card">
-<h2>Astrology</h2>
-<p id="astroBody"></p>
-</div>
-
-<div class="card">
-<h2>Tarot</h2>
-<div class="icon" id="tarotIcon">🃏</div>
-<p id="tarotBody"></p>
-</div>
-
-<div class="card">
-<h2>Daily Oracle</h2>
-<p id="oracle"></p>
-</div>
-
-<script>
-
-/* star field */
-
-function createStars(){
-
-const container=document.getElementById("stars");
-
-for(let i=0;i<120;i++){
-
-const star=document.createElement("div");
-star.className="star";
-
-star.style.left=Math.random()*100+"%";
-star.style.top=Math.random()*100+"%";
-star.style.animationDelay=Math.random()*4+"s";
-
-container.appendChild(star);
-
-}
-
-}
-
-createStars();
-
-/* moon phase */
-
-function moonPhase(dateString){
-
-const date=new Date(dateString);
-const lp=2551443;
-const newMoon=new Date("2000-01-06T18:14:00Z").getTime();
-
-const phase=((date.getTime()-newMoon)/1000)%lp;
-const index=Math.floor((phase/lp)*8);
-
-const phases=[
-{name:"New Moon",icon:"🌑"},
-{name:"Waxing Crescent",icon:"🌒"},
-{name:"First Quarter",icon:"🌓"},
-{name:"Waxing Gibbous",icon:"🌔"},
-{name:"Full Moon",icon:"🌕"},
-{name:"Waning Gibbous",icon:"🌖"},
-{name:"Last Quarter",icon:"🌗"},
-{name:"Waning Crescent",icon:"🌘"}
-];
-
-return phases[index];
-
-}
-
-/* tarot */
-
-const TAROT=[
-"The Fool","The Magician","The High Priestess","The Empress","The Emperor",
-"The Hierophant","The Lovers","The Chariot","Strength","The Hermit",
-"Wheel of Fortune","Justice","The Hanged Man","Death","Temperance",
-"The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World"
-];
-
-/* zodiac */
-
-function zodiacSign(date){
-
-const d=new Date(date);
-const day=d.getDate();
-const month=d.getMonth()+1;
-
-const signs=[
-["Capricorn",1,19],["Aquarius",2,18],["Pisces",3,20],
-["Aries",4,19],["Taurus",5,20],["Gemini",6,20],
-["Cancer",7,22],["Leo",8,22],["Virgo",9,22],
-["Libra",10,22],["Scorpio",11,21],["Sagittarius",12,21],
-["Capricorn",12,31]
-];
-
-for(let i=0;i<signs.length;i++){
-
-let s=signs[i];
-if(month===s[1] && day<=s[2]) return s[0];
-
-}
-
-}
-
-/* luck */
-
-function luckyEnergy(seed){
-
-const colours=["Silver","Gold","Indigo","Emerald","Crimson","Violet","Amber","Rose","Sapphire"];
-
-return{
-number:(seed%9)+1,
-colour:colours[seed%colours.length]
-};
-
-}
-
-/* oracle */
-
-const ORACLE=[
-"The universe quietly aligns in your favour.",
-"A hidden opportunity approaches.",
-"Trust your intuition today.",
-"A moment of clarity will arrive.",
-"Letting go creates space for growth."
-];
-
-function dailyOracle(seed){
-return ORACLE[seed%ORACLE.length];
-}
-
-/* tarot spread */
-
-function drawSpread(seed){
-
-return{
-past:TAROT[seed%TAROT.length],
-present:TAROT[(seed+7)%TAROT.length],
-future:TAROT[(seed+13)%TAROT.length]
-};
-
-}
-
-/* main reading */
-
-function generateReading(){
-
-const deck=document.getElementById("tarotDeck");
-deck.classList.add("shuffle");
-
-setTimeout(()=>{
-
-deck.classList.remove("shuffle");
-
-const today=new Date().toISOString().slice(0,10);
-const seed=today.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-
-const moon=moonPhase(today);
-const zodiac=zodiacSign(today);
-const spread=drawSpread(seed);
-const luck=luckyEnergy(seed);
-
-document.getElementById("moonIcon").textContent=moon.icon;
-document.getElementById("moonPhaseName").textContent=moon.name;
-document.getElementById("moonBody").textContent="The moon encourages reflection and inner awareness.";
-
-document.getElementById("astroBody").textContent=
-"Zodiac: "+zodiac+" | Lucky number: "+luck.number+" | Lucky colour: "+luck.colour;
-
-document.getElementById("tarotBody").textContent=
-"Past: "+spread.past+" | Present: "+spread.present+" | Future: "+spread.future;
-
-document.getElementById("oracle").textContent=dailyOracle(seed);
-
-const icon=document.getElementById("tarotIcon");
-icon.classList.remove("reveal");
-void icon.offsetWidth;
-icon.classList.add("reveal");
-
-},1500);
-
-}
-
-/* crystal trigger */
-
-document.getElementById("crystalBall").addEventListener("click",function(){
-
-this.classList.remove("crystal-active");
-void this.offsetWidth;
-this.classList.add("crystal-active");
-
-generateReading();
-
-});
-
-</script>
-
-</body>
-</html>
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-name">Luna</div>
+      <div class="brand-tagline">Cycle &amp; Mood Tracker</div>
+    </div>
+    <div class="header-phase" id="headerPhase">Loading…</div>
+  </header>
+
+  <!-- ===== HOME VIEW ===== -->
+  <div class="view active" id="view-home">
+
+    <div class="phase-strip" id="phaseStrip"></div>
+
+    <div class="section-title">This Month</div>
+
+    <div class="calendar-wrap">
+      <div class="cal-nav">
+        <button class="cal-btn" id="prevMonth">&#8249;</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-btn" id="nextMonth">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f5dde3;border:1px solid #c4637a"></div> Period</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ddeee3;border:1px solid #7ba68a"></div> Fertile</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdefd5;border:1px solid #e8a83d"></div> Ovulation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e8e2f5;border:1px solid #8e7bb5"></div> PMS</div>
+    </div>
+
+    <!-- Log Panel -->
+    <div class="log-panel" id="logPanel">
+      <div class="log-panel-header">
+        <div class="log-panel-date" id="logPanelDate">Today</div>
+        <div id="logPanelMoon" style="font-size:0.78rem;color:var(--mauve);margin-top:3px;font-family:'Cormorant Garamond',serif;font-style:italic;"></div>
+      </div>
+      <div class="log-panel-body">
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Period</div>
+            <div class="toggle-sub">Mark today as a period day</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="togglePeriod"><span class="slider"></span></label>
+        </div>
+
+        <div id="flowSection" class="flow-section" style="display:none">
+          <div class="mood-label">Flow intensity</div>
+          <div class="flow-btns">
+            <button class="flow-btn" data-flow="light">
+              <div class="flow-drops">
+                <div class="drop"></div>
+                <div class="drop dim"></div>
+                <div class="drop dim"></div>
+              </div>
+              Light
+            </button>
+            <button class="flow-btn" data-flow="medium">
+              <div class="flow-drops">
+                <div class="drop"></div>
+                <div class="drop"></div>
+                <div class="drop dim"></div>
+              </div>
+              Normal
+            </button>
+            <button class="flow-btn" data-flow="heavy">
+              <div class="flow-drops">
+                <div class="drop"></div>
+                <div class="drop"></div>
+                <div class="drop"></div>
+              </div>
+              Heavy
+            </button>
+          </div>
+        </div>
+
+        <div class="mood-section">
+          <div class="mood-label">How are you feeling?</div>
+          <div class="mood-grid" id="moodGrid"></div>
+        </div>
+
+        <div class="symptom-section">
+          <div class="mood-label">Symptoms</div>
+          <div class="symptom-grid" id="symptomGrid"></div>
+        </div>
+
+        <div class="notes-section">
+          <div class="mood-label">Notes</div>
+          <textarea class="notes-input" id="notesInput" rows="2" placeholder="Anything to remember about today…"></textarea>
+        </div>
+
+        <button class="save-btn" id="saveBtn">Save today's log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STATS VIEW ===== -->
+  <div class="view" id="view-stats">
+    <div class="section-title" style="padding-top:16px">Your Cycle</div>
+  
