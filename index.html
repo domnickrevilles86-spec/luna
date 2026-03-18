@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Luna — Cycle & Mood Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c4637a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Luna">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--rose:#c4637a;--rose-light:#e8a0b0;--rose-pale:#f5dde3;--mauve:#7b5e7b;--cream:#fdf8f4;--parchment:#f0e8df;--ink:#2d2028;--muted:#9e8a94;--white:#ffffff}
+html{font-size:16px}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 10% 10%,#f0d8df55 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 90% 80%,#ddd0ea44 0%,transparent 60%);pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 0 100px}
+header{padding:36px 24px 16px;display:flex;align-items:flex-end;justify-content:space-between}
+.brand-name{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:300;letter-spacing:0.04em;color:var(--rose);line-height:1}
+.brand-tagline{font-size:0.72rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px}
+.header-phase{text-align:right;font-family:'Cormorant Garamond',serif;font-size:0.85rem;color:var(--mauve);font-style:italic}
+.phase-strip{display:flex;gap:8px;padding:0 24px 20px;overflow-x:auto;scrollbar-width:none}
+.phase-strip::-webkit-scrollbar{display:none}
+.phase-tag{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:0.72rem;letter-spacing:0.08em;font-weight:500}
+.phase-tag.period{background:#f5dde3;color:var(--rose)}.phase-tag.fertile{background:#ddeee3;color:#4a7a58}
+.phase-tag.ovulation{background:#fdefd5;color:#a06b10}.phase-tag.pms{background:#e8e2f5;color:var(--mauve)}
+.phase-tag.follicular{background:#e8e8f0;color:#5a5472}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:var(--ink);padding:0 24px 12px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--rose-light),transparent)}
+.calendar-wrap{padding:0 24px;margin-bottom:16px}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-month{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:400}
+.cal-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--rose-light);background:var(--white);color:var(--rose);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{text-align:center;font-size:0.65rem;letter-spacing:0.1em;color:var(--muted);padding-bottom:6px;text-transform:uppercase}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;font-size:0.82rem;cursor:pointer;position:relative;user-select:none}
+.cal-day:hover:not(.empty){background:var(--rose-pale)}
+.cal-day.empty{cursor:default}
+.cal-day.today{box-shadow:0 0 0 2px var(--rose);font-weight:500}
+.cal-day.period-day{background:#f5dde3;color:var(--rose);font-weight:500}
+.cal-day.fertile-day{background:#ddeee3;color:#3a6a48}
+.cal-day.ovulation-day{background:#fdefd5;color:#a06b10;font-weight:500}
+.cal-day.pms-day{background:#e8e2f5;color:var(--mauve)}
+.cal-day.selected-day{box-shadow:0 0 0 2px var(--ink)}
+.cal-day.logged::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--mauve)}
+.cal-moon{font-size:0.45rem;line-height:1;opacity:0.75}
+.legend{display:flex;flex-wrap:wrap;gap:10px;padding:4px 24px 16px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--muted)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.log-panel{margin:0 24px;background:var(--white);border-radius:20px;border:1px solid var(--rose-pale);overflow:hidden;box-shadow:0 4px 24px #c4637a12}
+.log-panel-header{background:linear-gradient(135deg,var(--rose-pale),#ede4f0);padding:16px 20px 12px}
+.log-panel-date{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--ink)}
+.log-panel-moon{font-size:0.78rem;color:var(--mauve);margin-top:3px;font-family:'Cormorant Garamond',serif;font-style:italic}
+.log-panel-body{padding:18px 20px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--parchment)}
+.toggle-label{font-size:0.88rem;color:var(--ink)}.toggle-sub{font-size:0.72rem;color:var(--muted);margin-top:1px}
+.toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;cursor:pointer;background:var(--parchment);border-radius:24px;transition:background .2s}
+.slider::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;left:3px;top:3px;background:white;box-shadow:0 1px 4px #0002;transition:transform .2s}
+input:checked+.slider{background:var(--rose)}
+input:checked+.slider::before{transform:translateX(18px)}
+.section-label{font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin:14px 0 10px}
+.flow-btns{display:flex;gap:8px}
+.flow-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid var(--parchment);background:var(--cream);color:var(--muted);font-size:0.72rem;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .18s}
+.flow-btn:hover{border-color:var(--rose-light);background:var(--rose-pale)}
+.flow-btn.active{background:var(--rose-pale);border-color:var(--rose);color:var(--rose)}
+.flow-drops{display:flex;gap:2px}
+.drop{width:14px;height:18px;background:var(--parchment);clip-path:polygon(50% 0%,80% 40%,100% 65%,85% 90%,15% 90%,0% 65%,20% 40%);transition:background .18s}
+.flow-btn.active .drop{background:var(--rose)}.flow-btn:hover .drop{background:var(--rose-light)}.drop.dim{opacity:0.25}
+.mood-grid{display:flex;gap:8px;flex-wrap:wrap}
+.mood-btn{padding:7px 14px;border-radius:20px;border:1.5px solid var(--parchment);background:var(--cream);color:var(--muted);font-size:0.8rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.mood-btn:hover{border-color:var(--rose-light);color:var(--rose)}
+.mood-btn.active{background:var(--rose-pale);border-color:var(--rose);color:var(--rose);font-weight:500}
+.symptom-grid{display:flex;gap:8px;flex-wrap:wrap}
+.symptom-btn{padding:6px 12px;border-radius:16px;border:1.5px solid var(--parchment);background:var(--cream);color:var(--muted);font-size:0.75rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s}
+.symptom-btn:hover{border-color:var(--mauve);color:var(--mauve)}
+.symptom-btn.active{background:#e8e2f5;border-color:var(--mauve);color:var(--mauve)}
+.notes-input{width:100%;border:1.5px solid var(--parchment);border-radius:12px;padding:10px 14px;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--cream);resize:none;outline:none;line-height:1.5;margin-top:4px}
+.notes-input:focus{border-color:var(--rose-light)}
+.notes-input::placeholder{color:var(--muted)}
+.save-btn{margin-top:18px;width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--mauve));color:white;border:none;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;box-shadow:0 4px 16px #c4637a30}
+.save-btn:active{transform:scale(0.98)}
+.stats-wrap{padding:0 24px;margin-bottom:20px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-card{background:var(--white);border-radius:16px;padding:16px;border:1px solid var(--parchment)}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:var(--rose);line-height:1;margin-bottom:4px}
+.stat-label{font-size:0.72rem;color:var(--muted);letter-spacing:0.06em}
+.cycle-bar-wrap{margin:0 24px 20px;background:var(--white);border-radius:16px;padding:18px;border:1px solid var(--parchment)}
+.cycle-bar-title{font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px}
+.cycle-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px}
+.cycle-seg{height:100%;border-radius:3px}
+.cycle-bar-legend{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
+.cbl-item{display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--muted)}
+.cbl-dot{width:8px;height:8px;border-radius:2px}
+.carousel-wrap{padding:0 24px;overflow:hidden}
+.carousel-track{display:flex;transition:transform 0.35s cubic-bezier(.4,0,.2,1)}
+.carousel-slide{min-width:100%;padding:0 2px 4px}
+.chart-card{background:var(--white);border-radius:20px;padding:16px 16px 12px;border:1px solid var(--parchment)}
+.chart-title-row{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--ink);margin-bottom:2px}
+.chart-subtitle{font-size:0.72rem;color:var(--muted);letter-spacing:0.06em;margin-bottom:12px;text-transform:uppercase}
+.chart-empty{text-align:center;padding:24px 0;font-size:0.88rem;color:var(--muted);font-family:'Cormorant Garamond',serif;font-style:italic}
+canvas{width:100%!important}
+.carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:12px}
+.carousel-dot{width:6px;height:6px;border-radius:50%;background:var(--parchment);cursor:pointer;transition:all .2s}
+.carousel-dot.active{background:var(--rose);width:18px;border-radius:3px}
+.insight-list{padding:0 24px;display:flex;flex-direction:column;gap:12px}
+.insight-card{background:var(--white);border-radius:16px;padding:16px 18px;border:1px solid var(--parchment);display:flex;gap:14px;align-items:flex-start}
+.insight-icon{font-size:1.4rem;flex-shrink:0}
+.insight-title{font-size:0.88rem;font-weight:500;color:var(--ink);margin-bottom:3px}
+.insight-desc{font-size:0.78rem;color:var(--muted);line-height:1.5}
+.mystic-card{margin:0 24px 14px;background:var(--white);border-radius:20px;border:1px solid var(--parchment);overflow:hidden}
+.mystic-card-header{display:flex;align-items:center;gap:14px;padding:16px 18px 12px;background:linear-gradient(135deg,#f0e8f8,#f5dde3);border-bottom:1px solid var(--parchment)}
+.mystic-icon{font-size:2rem;flex-shrink:0}
+.mystic-card-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--ink)}
+.mystic-card-sub{font-size:0.68rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-top:1px}
+.mystic-body{padding:14px 18px 16px;font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--ink);line-height:1.7;min-height:60px}
+.mystic-loading{opacity:0.5;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:0.8}}
+.settings-wrap{padding:0 24px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--parchment)}
+.setting-label{font-size:0.9rem;color:var(--ink)}.setting-sub{font-size:0.72rem;color:var(--muted);margin-top:2px}
+.setting-input{border:1.5px solid var(--parchment);border-radius:8px;padding:5px 8px;font-size:0.9rem;text-align:center;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--cream);outline:none}
+.action-btn{padding:8px 16px;border-radius:12px;background:var(--rose-pale);border:1.5px solid var(--rose);color:var(--rose);font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer}
+.action-btn.danger{border-color:#c0392b;color:#c0392b;background:#fdecea}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--rose-pale);display:flex;justify-content:space-around;padding:10px 0 16px;z-index:10}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.62rem;color:var(--muted);cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;background:none;border:none;font-family:'DM Sans',sans-serif;transition:color .15s}
+.nav-btn.active{color:var(--rose)}.nav-btn svg{width:20px;height:20px}
+.view{display:none}.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.view.active>*{animation:fadeIn 0.3s ease both}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:white;padding:11px 22px;border-radius:24px;font-size:0.82rem;box-shadow:0 6px 24px #0004;transition:transform 0.3s cubic-bezier(.34,1.56,.64,1),opacity 0.3s;opacity:0;z-index:100;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="brand-name">Luna</div>
+      <div class="brand-tagline">Cycle &amp; Mood Tracker</div>
+    </div>
+    <div class="header-phase" id="headerPhase"></div>
+  </header>
+
+  <!-- HOME -->
+  <div class="view active" id="view-home">
+    <div class="phase-strip" id="phaseStrip"></div>
+    <div class="section-title">This Month</div>
+    <div class="calendar-wrap">
+      <div class="cal-nav">
+        <button class="cal-btn" id="prevMonth">&#8249;</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-btn" id="nextMonth">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f5dde3;border:1px solid #c4637a"></div>Period</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ddeee3;border:1px solid #7ba68a"></div>Fertile</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdefd5;border:1px solid #e8a83d"></div>Ovulation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e8e2f5;border:1px solid #8e7bb5"></div>PMS</div>
+    </div>
+    <div class="log-panel">
+      <div class="log-panel-header">
+        <div class="log-panel-date" id="logPanelDate">Today</div>
+        <div class="log-panel-moon" id="logPanelMoon"></div>
+      </div>
+      <div class="log-panel-body">
+        <div class="toggle-row">
+          <div><div class="toggle-label">Period</div><div class="toggle-sub">Mark this day as a period day</div></div>
+          <label class="toggle"><input type="checkbox" id="togglePeriod"><span class="slider"></span></label>
+        </div>
+        <div id="flowSection" style="display:none">
+          <div class="section-label">Flow intensity</div>
+          <div class="flow-btns">
+            <button class="flow-btn" data-flow="light"><div class="flow-drops"><div class="drop"></div><div class="drop dim"></div><div class="drop dim"></div></div>Light</button>
+            <button class="flow-btn" data-flow="medium"><div class="flow-drops"><div class="drop"></div><div class="drop"></div><div class="drop dim"></div></div>Normal</button>
+            <button class="flow-btn" data-flow="heavy"><div class="flow-drops"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div>Heavy</button>
+          </div>
+        </div>
+        <div class="section-label">How are you feeling?</div>
+        <div class="mood-grid" id="moodGrid"></div>
+        <div class="section-label">Symptoms</div>
+        <div class="symptom-grid" id="symptomGrid"></div>
+        <div class="section-label">Notes</div>
+        <textarea class="notes-input" id="notesInput" rows="2" placeholder="Anything to remember about today…"></textarea>
+        <button class="save-btn" id="saveBtn">Save today's log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="view" id="view-stats">
+    <div class="section-title" style="padding-top:16px">Your Cycle</div>
+    <div class="stats-wrap"><div class="stats-grid" id="statsGrid"></div></div>
+    <div class="section-title">Cycle Breakdown</div>
+    <div class="cycle-bar-wrap">
+      <div class="cycle-bar-title">Phase distribution</div>
+      <div class="cycle-bar" id="cycleBar"></div>
+      <div class="cycle-bar-legend">
+        <div class="cbl-item"><div class="cbl-dot" style="background:#f5dde3"></div>Period</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#e8e8f0"></div>Follicular</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#fdefd5"></div>Ovulation</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#ddeee3"></div>Fertile</div>
+        <div class="cbl-item"><div class="cbl-dot" style="background:#e8e2f5"></div>Luteal</div>
+      </div>
+    </div>
+    <div class="section-title">Charts</div>
+    <div class="carousel-wrap">
+      <div class="carousel-track" id="carouselTrack">
+        <div class="carousel-slide"><div class="chart-card">
+          <div class="chart-title-row">😊 Mood Patterns</div>
+          <div class="chart-subtitle">Most logged moods overall</div>
+          <canvas id="moodBarChart" height="160"></canvas>
+          <div id="moodBarEmpty" class="chart-empty" style="display:none">Log moods to see patterns here 😊</div>
+        </div></div>
+        <div class="carousel-slide"><div class="chart-card">
+          <div class="chart-title-row">🌙 Mood by Phase</div>
+          <div class="chart-subtitle">How you feel in each cycle phase</div>
+          <canvas id="moodPhaseChart" height="160"></canvas>
+          <div id="moodPhaseEmpty" class="chart-empty" style="display:none">Log more data to see phase patterns 🌙</div>
+        </div></div>
+        <div class="carousel-slide"><div class="chart-card">
+          <div class="chart-title-row">🩸 Flow History</div>
+          <div class="chart-subtitle">Flow intensity over recent periods</div>
+          <canvas id="flowChart" height="160"></canvas>
+          <div id="flowEmpty" class="chart-empty" style="display:none">Log flow during your period to see history 🩸</div>
+        </div></div>
+        <div class="carousel-slide"><div class="chart-card">
+          <div class="chart-title-row">💊 Top Symptoms</div>
+          <div class="chart-subtitle">Most frequently logged symptoms</div>
+          <canvas id="symptomChart" height="160"></canvas>
+          <div id="symptomEmpty" class="chart-empty" style="display:none">Log symptoms to see patterns here 💊</div>
+        </div></div>
+        <div class="carousel-slide"><div class="chart-card">
+          <div class="chart-title-row">🌕 Mood vs Moon</div>
+          <div class="chart-subtitle">Emotional energy across the lunar cycle</div>
+          <canvas id="moonMoodChart" height="160"></canvas>
+          <div id="moonMoodEmpty" class="chart-empty" style="display:none">Log more data to see lunar patterns 🌕</div>
+        </div></div>
+      </div>
+      <div class="carousel-dots" id="carouselDots"></div>
+    </div>
+    <div class="section-title" style="margin-top:16px">Recent History</div>
+    <div class="insight-list" id="moodHistory"></div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="view" id="view-insights">
+    <div class="section-title" style="padding-top:16px">Insights</div>
+    <div class="insight-list" id="insightList"></div>
+  </div>
+
+  <!-- MYSTIC -->
+  <div class="view" id="view-mystic">
+    <div class="section-title" style="padding-top:16px">✨ Mystic</div>
+    <div style="padding:0 24px 16px;display:flex;align-items:center;gap:10px">
+      <label style="font-size:0.75rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase">Reading for</label>
+      <input type="date" id="mysticDate" class="setting-input" style="width:auto;flex:1">
+      <button class="action-btn" id="mysticReadBtn" onclick="generateReading()">Read ✦</button>
+    </div>
+    <div class="mystic-card">
+      <div class="mystic-card-header"><span class="mystic-icon" id="moonIcon">🌕</span><div><div class="mystic-card-title" id="moonPhaseName">Full Moon</div><div class="mystic-card-sub">Lunar Phase</div></div></div>
+      <div class="mystic-body" id="moonBody">Tap "Read ✦" to receive your lunar reading.</div>
+    </div>
+    <div class="mystic-card">
+      <div class="mystic-card-header"><span class="mystic-icon">🔭</span><div><div class="mystic-card-title">Astronomy</div><div class="mystic-card-sub">Celestial energy</div></div></div>
+      <div class="mystic-body" id="astroBody">Your celestial reading will appear here.</div>
+    </div>
+    <div class="mystic-card">
+      <div class="mystic-card-header"><span class="mystic-icon" id="tarotIcon">🃏</span><div><div class="mystic-card-title" id="tarotName">Your Card</div><div class="mystic-card-sub">Daily Tarot</div></div></div>
+      <div class="mystic-body" id="tarotBody">Your tarot reading will appear here.</div>
+    </div>
+    <div style="padding:8px 24px 24px;font-size:0.68rem;color:var(--muted);text-align:center;line-height:1.6">Readings are generated by AI for reflection and fun. 🌙</div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <div class="section-title" style="padding-top:16px">Settings</div>
+    <div class="settings-wrap">
+      <div class="setting-row">
+        <div><div class="setting-label">Cycle length</div><div class="setting-sub">Average days per cycle</div></div>
+        <input class="setting-input" type="number" id="settingCycleLen" min="20" max="45" value="28" style="width:60px">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Period length</div><div class="setting-sub">Average days of bleeding</div></div>
+        <input class="setting-input" type="number" id="settingPeriodLen" min="2" max="10" value="5" style="width:60px">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Last period started</div><div class="setting-sub">First day of your last period</div></div>
+        <input type="date" id="settingLastPeriod" class="setting-input" style="width:auto">
+      </div>
+      <div class="setting-row" style="border-bottom:none;margin-top:8px">
+        <div></div>
+        <button class="action-btn" id="saveSettings">Save settings</button>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:16px">Data</div>
+    <div class="settings-wrap">
+      <div class="setting-row">
+        <div><div class="setting-label">Export data</div><div class="setting-sub">Download your logs as JSON</div></div>
+        <button class="action-btn" id="exportBtn">Export</button>
+      </div>
+      <div class="setting-row" style="border-bottom:none">
+        <div><div class="setting-label">Clear all data</div><div class="setting-sub">Permanently delete all logs</div></div>
+        <button class="action-btn danger" id="clearBtn">Clear</button>
+      </div>
+    </div>
+    <div style="padding:24px;font-size:0.72rem;color:var(--muted);line-height:1.6">🔒 All data is stored privately on your device only. Nothing is ever sent to any server.</div>
+  </div>
+</div>
+
+<nav>
+  <button class="nav-btn active" onclick="switchView('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Today
+  </button>
+  <button class="nav-btn" onclick="switchView('stats',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>Stats
+  </button>
+  <button class="nav-btn" onclick="switchView('insights',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2 5.5-3 7H8c-1-1.5-3-3.5-3-7a7 7 0 0 1 7-7z"/><path d="M9 21h6m-3-3v3"/></svg>Insights
+  </button>
+  <button class="nav-btn" onclick="switchView('mystic',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Mystic
+  </button>
+  <button class="nav-btn" onclick="switchView('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
+  </button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const MOODS=[
+  {id:'happy',emoji:'😊',label:'Happy'},{id:'calm',emoji:'😌',label:'Calm'},
+  {id:'energetic',emoji:'⚡',label:'Energetic'},{id:'anxious',emoji:'😰',label:'Anxious'},
+  {id:'sad',emoji:'😔',label:'Sad'},{id:'irritable',emoji:'😠',label:'Irritable'},
+  {id:'tired',emoji:'😴',label:'Tired'},{id:'moody',emoji:'🌊',label:'Moody'},
+  {id:'horny',emoji:'😈',label:'Frisky'},{id:'hungry',emoji:'🍕',label:'Hungry'},
+  {id:'thirsty',emoji:'🥤',label:'Thirsty'},
+];
+const SYMPTOMS=['Cramps','Bloating','Headache','Back pain','Breast tenderness','Nausea','Acne','Insomnia','Fatigue','Spotting','Discharge','Hot flashes'];
+const TAROT=[
+  {name:'The Fool',e:'🌟'},{name:'The Magician',e:'🪄'},{name:'The High Priestess',e:'🌙'},
+  {name:'The Empress',e:'🌸'},{name:'The Emperor',e:'👑'},{name:'The Hierophant',e:'📿'},
+  {name:'The Lovers',e:'💞'},{name:'The Chariot',e:'🏆'},{name:'Strength',e:'🦁'},
+  {name:'The Hermit',e:'🕯️'},{name:'Wheel of Fortune',e:'☸️'},{name:'Justice',e:'⚖️'},
+  {name:'The Hanged Man',e:'🌿'},{name:'Death',e:'🦋'},{name:'Temperance',e:'🌊'},
+  {name:'The Devil',e:'⛓️'},{name:'The Tower',e:'⚡'},{name:'The Star',e:'⭐'},
+  {name:'The Moon',e:'🌕'},{name:'The Sun',e:'☀️'},{name:'Judgement',e:'📯'},
+  {name:'The World',e:'🌍'},{name:'Ace of Cups',e:'🏆'},{name:'Two of Cups',e:'💑'},
+  {name:'Three of Cups',e:'🥂'},{name:'Six of Wands',e:'🎖️'},{name:'Seven of Cups',e:'🌈'},
+  {name:'Eight of Pentacles',e:'🔨'},{name:'Nine of Swords',e:'😰'},{name:'Ten of Cups',e:'🏡'},
+];
+
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+function retrieve(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+
+function todayStr(off=0){const d=new Date();d.setDate(d.getDate()+off);return d.toISOString().slice(0,10)}
+function dStr(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function pDate(s){const p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function diffD(a,b){return Math.round((pDate(b)-pDate(a))/86400000)}
+
+let settings=retrieve('luna_settings',{cycleLen:28,periodLen:5,lastPeriod:todayStr(-28)});
+let logs=retrieve('luna_logs',{});
+let calDate=new Date();
+let selDate=todayStr(0);
+let selMoods=new Set();
+let selSymps=new Set();
+
+function moonPhase(ds){
+  const diff=(pDate(ds)-new Date(2000,0,6))/86400000;
+  let p=((diff%29.53058867)+29.53058867)%29.53058867;
+  if(p<1.85)return{e:'🌑',n:'New Moon'};
+  if(p<5.54)return{e:'🌒',n:'Waxing Crescent'};
+  if(p<9.22)return{e:'🌓',n:'First Quarter'};
+  if(p<12.91)return{e:'🌔',n:'Waxing Gibbous'};
+  if(p<16.61)return{e:'🌕',n:'Full Moon'};
+  if(p<20.30)return{e:'🌖',n:'Waning Gibbous'};
+  if(p<23.99)return{e:'🌗',n:'Last Quarter'};
+  if(p<27.68)return{e:'🌘',n:'Waning Crescent'};
+  return{e:'🌑',n:'New Moon'};
+}
+
+function cyclePhase(ds){
+  if(!settings.lastPeriod)return null;
+  let pos=diffD(settings.lastPeriod,ds)%settings.cycleLen;
+  if(pos<0)pos+=settings.cycleLen;
+  const cl=settings.cycleLen,pl=settings.periodLen,ovD=Math.round(cl-14);
+  if(pos<pl)return'period';
+  if(pos>=ovD-5&&pos<ovD)return'fertile';
+  if(pos>=ovD&&pos<ovD+2)return'ovulation';
+  if(pos>=ovD+2)return'pms';
+  return'follicular';
+}
+
+function nextPeriodIn(){
+  if(!settings.lastPeriod)return null;
+  let pos=diffD(settings.lastPeriod,todayStr(0))%settings.cycleLen;
+  if(pos<0)pos+=settings.cycleLen;
+  return settings.cycleLen-pos;
+}
+
+// Calendar
+function renderCal(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  document.getElementById('calMonth').textContent=new Date(y,m,1).toLocaleDateString('en',{month:'long',year:'numeric'});
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML=['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),tod=todayStr(0);
+  for(let i=0;i<first;i++)grid.innerHTML+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const ds=dStr(y,m,d),ph=cyclePhase(ds),log=logs[ds];
+    let cls='cal-day';
+    if(ph==='period')cls+=' period-day';
+    else if(ph==='fertile')cls+=' fertile-day';
+    else if(ph==='ovulation')cls+=' ovulation-day';
+    else if(ph==='pms')cls+=' pms-day';
+    if(log&&(log.moods?.length||log.symptoms?.length))cls+=' logged';
+    if(ds===tod)cls+=' today';
+    if(ds===selDate)cls+=' selected-day';
+    grid.innerHTML+=`<div class="${cls}" onclick="selectDay('${ds}')"><span>${d}</span><span class="cal-moon">${moonPhase(ds).e}</span></div>`;
+  }
+}
+
+function selectDay(ds){
+  selDate=ds;renderCal();loadLog(ds);
+  const d=pDate(ds);
+  document.getElementById('logPanelDate').textContent=ds===todayStr(0)?'Today':d.toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'});
+  const moon=moonPhase(ds);
+  document.getElementById('logPanelMoon').textContent=`${moon.e} ${moon.n}`;
+}
+
+document.getElementById('prevMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCal()};
+document.getElementById('nextMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCal()};
+
+// Log
+function loadLog(ds){
+  const log=logs[ds]||{};
+  document.getElementById('togglePeriod').checked=!!log.period;
+  document.getElementById('flowSection').style.display=log.period?'block':'none';
+  document.querySelectorAll('.flow-btn').forEach(b=>b.classList.toggle('active',b.dataset.flow===log.flow));
+  selMoods=new Set(log.moods||[]);selSymps=new Set(log.symptoms||[]);
+  document.getElementById('notesInput').value=log.notes||'';
+  renderMoods();renderSymptoms();
+}
+function renderMoods(){
+  document.getElementById('moodGrid').innerHTML=MOODS.map(m=>
+    `<button class="mood-btn${selMoods.has(m.id)?' active':''}" onclick="toggleMood('${m.id}')">${m.emoji} ${m.label}</button>`
+  ).join('');
+}
+function renderSymptoms(){
+  document.getElementById('symptomGrid').innerHTML=SYMPTOMS.map(s=>
+    `<button class="symptom-btn${selSymps.has(s)?' active':''}" onclick="toggleSymp('${s}')">${s}</button>`
+  ).join('');
+}
+function toggleMood(id){selMoods.has(id)?selMoods.delete(id):selMoods.add(id);renderMoods()}
+function toggleSymp(s){selSymps.has(s)?selSymps.delete(s):selSymps.add(s);renderSymptoms()}
+
+document.getElementById('togglePeriod').onchange=function(){
+  document.getElementById('flowSection').style.display=this.checked?'block':'none';
+};
+document.querySelectorAll('.flow-btn').forEach(b=>b.onclick=function(){
+  document.querySelectorAll('.flow-btn').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');
+});
+document.getElementById('saveBtn').onclick=()=>{
+  const isPeriod=document.getElementById('togglePeriod').checked;
+  const flow=[...document.querySelectorAll('.flow-btn.active')].map(b=>b.dataset.flow)[0]||null;
+  logs[selDate]={period:isPeriod,flow,moods:[...selMoods],symptoms:[...selSymps],notes:document.getElementById('notesInput').value.trim()};
+  store('luna_logs',logs);
+  if(isPeriod&&selDate<=todayStr(0)){settings.lastPeriod=selDate;store('luna_settings',settings)}
+  showToast('✓ Saved!');renderCal();renderPhaseStrip();renderHeaderPhase();
+};
+
+// Phase strip & header
+function renderPhaseStrip(){
+  const lbl={period:'🩸 Period',fertile:'🌿 Fertile',ovulation:'✨ Ovulation',pms:'🌙 PMS',follicular:'🌱 Follicular'};
+  let h='';
+  for(let i=0;i<7;i++){
+    const ds=todayStr(i),p=cyclePhase(ds);if(!p)continue;
+    const d=pDate(ds),l=i===0?'Today':d.toLocaleDateString('en',{weekday:'short'});
+    h+=`<div class="phase-tag ${p}">${l}: ${lbl[p]}</div>`;
+  }
+  document.getElementById('phaseStrip').innerHTML=h;
+}
+function renderHeaderPhase(){
+  const p=cyclePhase(todayStr(0));
+  const lbl={period:'Period day',fertile:'Fertile window',ovulation:'Ovulation',pms:'PMS phase',follicular:'Follicular phase'};
+  const next=nextPeriodIn();
+  let txt=p?(lbl[p]||p):'';
+  if(next!==null&&p!=='period')txt+=` · Next period in ${next}d`;
+  document.getElementById('headerPhase').textContent=txt;
+}
+
+// Charts
+let cIdx=0;
+function initCarousel(){
+  cIdx=0;
+  document.getElementById('carouselTrack').style.transform='translateX(0)';
+  document.getElementById('carouselDots').innerHTML=Array.from({length:5},(_,i)=>
+    `<div class="carousel-dot${i===0?' active':''}" onclick="goSlide(${i})"></div>`
+  ).join('');
+  const track=document.getElementById('carouselTrack');
+  let sx=0;
+  track.ontouchstart=e=>{sx=e.touches[0].clientX};
+  track.ontouchend=e=>{
+    const diff=sx-e.changedTouches[0].clientX;
+    if(Math.abs(diff)>40){if(diff>0&&cIdx<4)goSlide(cIdx+1);else if(diff<0&&cIdx>0)goSlide(cIdx-1)}
+  };
+}
+function goSlide(i){
+  cIdx=i;
+  document.getElementById('carouselTrack').style.transform=`translateX(-${i*100}%)`;
+  document.querySelectorAll('.carousel-dot').forEach((d,j)=>d.classList.toggle('active',j===i));
+  setTimeout(drawCharts,360);
+}
+function setupCanvas(el,h){
+  const dpr=window.devicePixelRatio||1;
+  // Use the carousel wrap as fixed width reference to prevent growing on redraw
+  const wrap=document.querySelector('.carousel-wrap');
+  const w=(wrap?wrap.clientWidth:el.parentElement.clientWidth)-32;
+  el.style.width='';el.style.height=''; // reset inline styles first
+  el.width=w*dpr;el.height=h*dpr;el.style.width=w+'px';el.style.height=h+'px';
+  const ctx=el.getContext('2d');ctx.scale(dpr,dpr);return{ctx,w,h};
+}
+function drawPie(cid,eid,labels,values,colors){
+  const el=document.getElementById(cid),empty=document.getElementById(eid);
+  const tot=values.reduce((a,b)=>a+b,0);
+  if(!tot){el.style.display='none';empty.style.display='block';return}
+  el.style.display='block';empty.style.display='none';
+  const h=parseInt(el.getAttribute('height'));
+  const{ctx,w}=setupCanvas(el,h);
+  const active=labels.map((l,i)=>({l,v:values[i],c:colors[i]})).filter(x=>x.v>0);
+  const total=active.reduce((a,x)=>a+x.v,0);
+  const radius=Math.min(w*0.28,h*0.38),cx=w*0.33,cy=h/2;
+  let angle=-Math.PI/2;
+  active.forEach(item=>{
+    const slice=(item.v/total)*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,radius,angle,angle+slice);ctx.closePath();
+    ctx.fillStyle=item.c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    angle+=slice;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,radius*0.52,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.fillStyle='#2d2028';ctx.font=`bold ${Math.round(radius*0.28)}px DM Sans,sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(total,cx,cy-5);
+  ctx.font=`${Math.round(radius*0.18)}px DM Sans,sans-serif`;ctx.fillStyle='#9e8a94';ctx.fillText('total',cx,cy+radius*0.22);
+  const lx=cx+radius+14,ly0=cy-(active.length*17)/2;
+  active.slice(0,9).forEach((item,i)=>{
+    const ly=ly0+i*18;
+    ctx.fillStyle=item.c;ctx.beginPath();ctx.roundRect(lx,ly,10,10,3);ctx.fill();
+    ctx.fillStyle='#2d2028';ctx.font='9.5px DM Sans,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(`${item.l} (${Math.round(item.v/total*100)}%)`,lx+13,ly+5);
+  });
+}
+function drawBar(cid,eid,labels,values,colors,maxVal){
+  const el=document.getElementById(cid),empty=document.getElementById(eid);
+  const tot=values.reduce((a,b)=>a+b,0);
+  if(!tot){el.style.display='none';empty.style.display='block';return}
+  el.style.display='block';empty.style.display='none';
+  const h=parseInt(el.getAttribute('height'));
+  const{ctx,w}=setupCanvas(el,h);
+  const pL=8,pR=8,pT=14,pB=36,cW=w-pL-pR,cH=h-pT-pB,max=maxVal||Math.max(...values)||1;
+  const bw=Math.min(32,(cW/labels.length)-6),gap=(cW-bw*labels.length)/(labels.length+1);
+  labels.forEach((lbl,i)=>{
+    const x=pL+gap+i*(bw+gap),bh=(values[i]/max)*cH,y=pT+cH-bh;
+    ctx.fillStyle=colors[i%colors.length];ctx.beginPath();ctx.roundRect(x,y,bw,bh,[6,6,0,0]);ctx.fill();
+    if(values[i]>0){ctx.fillStyle='#2d2028';ctx.font='10px DM Sans,sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(values[i],x+bw/2,y-2)}
+    ctx.fillStyle='#9e8a94';ctx.font='9px DM Sans,sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(lbl,x+bw/2,pT+cH+4);
+  });
+}
+function drawCharts(){
+  const all=Object.entries(logs).sort(([a],[b])=>a<b?-1:1);
+  const mC={};all.forEach(([,v])=>(v.moods||[]).forEach(m=>mC[m]=(mC[m]||0)+1));
+  drawPie('moodBarChart','moodBarEmpty',MOODS.map(m=>m.emoji+' '+m.label),MOODS.map(m=>mC[m.id]||0),['#f5dde3','#ddeee3','#fdefd5','#e8e2f5','#e8a0b0','#b5d5c0','#f7d794','#c3b1e1','#f0b8c4','#a8d8a8','#fce38a']);
+  const phases=['period','follicular','fertile','ovulation','pms'];
+  const pC={};phases.forEach(p=>pC[p]=0);
+  all.forEach(([ds,v])=>{const p=cyclePhase(ds);if(p&&(v.moods||[]).length)pC[p]+=v.moods.length});
+  drawPie('moodPhaseChart','moodPhaseEmpty',['🩸 Period','🌱 Follicular','🌿 Fertile','✨ Ovulation','🌙 PMS'],phases.map(p=>pC[p]),['#f5dde3','#e8e8f0','#ddeee3','#fdefd5','#e8e2f5']);
+  const fL=all.filter(([,v])=>v.period&&v.flow).slice(-14);
+  const fMap={light:1,medium:2,heavy:3},fV=fL.map(([,v])=>fMap[v.flow]||0);
+  drawBar('flowChart','flowEmpty',fL.map(([ds])=>pDate(ds).toLocaleDateString('en',{month:'short',day:'numeric'})),fV,fV.map(v=>v===1?'#f5dde3':v===2?'#e8a0b0':'#c4637a'),3);
+  const sC={};all.forEach(([,v])=>(v.symptoms||[]).forEach(s=>sC[s]=(sC[s]||0)+1));
+  const sS=Object.entries(sC).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  drawPie('symptomChart','symptomEmpty',sS.map(([s])=>s),sS.map(([,c])=>c),['#e8e2f5','#f5dde3','#ddeee3','#fdefd5','#e8e8f0','#e8a0b0','#b5d5c0','#f7d794']);
+  const mNames=['🌑 New','🌒 Wax Cres','🌓 1st Qtr','🌔 Wax Gib','🌕 Full','🌖 Wan Gib','🌗 Last Qtr','🌘 Wan Cres'];
+  const mMap={'New Moon':0,'Waxing Crescent':1,'First Quarter':2,'Waxing Gibbous':3,'Full Moon':4,'Waning Gibbous':5,'Last Quarter':6,'Waning Crescent':7};
+  const mC2=Array(8).fill(0);
+  all.forEach(([ds,v])=>{if((v.moods||[]).length){const idx=mMap[moonPhase(ds).n];if(idx!==undefined)mC2[idx]+=v.moods.length}});
+  drawPie('moonMoodChart','moonMoodEmpty',mNames,mC2,['#e8e8f0','#ede4f0','#e8e2f5','#ddd5ee','#f5dde3','#ddd5ee','#e8e2f5','#ede4f0']);
+}
+
+// Stats
+function renderStats(){
+  const all=Object.entries(logs).sort(([a],[b])=>a<b?-1:1),next=nextPeriodIn();
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-val">${settings.cycleLen}</div><div class="stat-label">Cycle length (days)</div></div>
+    <div class="stat-card"><div class="stat-val">${settings.periodLen}</div><div class="stat-label">Period length (days)</div></div>
+    <div class="stat-card"><div class="stat-val">${next!==null?next:'—'}</div><div class="stat-label">Days until next period</div></div>
+    <div class="stat-card"><div class="stat-val">${all.length}</div><div class="stat-label">Days logged total</div></div>`;
+  const cl=settings.cycleLen,pl=settings.periodLen,ovD=Math.round(cl-14);
+  document.getElementById('cycleBar').innerHTML=[
+    {c:'#f5dde3',d:pl},{c:'#e8e8f0',d:ovD-5-pl},{c:'#ddeee3',d:5},{c:'#fdefd5',d:2},{c:'#e8e2f5',d:cl-ovD-2}
+  ].filter(s=>s.d>0).map(s=>`<div class="cycle-seg" style="background:${s.c};flex:${s.d}"></div>`).join('');
+  const recent=all.slice(-10).reverse();
+  document.getElementById('moodHistory').innerHTML=recent.length?recent.map(([ds,v])=>{
+    const mL=(v.moods||[]).map(id=>MOODS.find(m=>m.id===id)).filter(Boolean).map(m=>m.emoji+' '+m.label).join(', ');
+    const d=pDate(ds);
+    return`<div class="insight-card"><div class="insight-icon">${(v.moods||[]).length?MOODS.find(m=>m.id===v.moods[0])?.emoji||'📅':'📅'}</div><div><div class="insight-title">${d.toLocaleDateString('en',{month:'short',day:'numeric'})}</div><div class="insight-desc">${mL||'No mood logged'}${v.symptoms?.length?' · '+v.symptoms.slice(0,2).join(', '):''}${v.notes?' · '+v.notes:''}</div></div></div>`;
+  }).join(''):`<div class="insight-card"><div class="insight-icon">📋</div><div><div class="insight-title">No logs yet</div><div class="insight-desc">Start logging on the Today tab to see your history here.</div></div></div>`;
+  initCarousel();
+  drawCharts();
+}
+
+// Insights
+function renderInsights(){
+  const p=cyclePhase(todayStr(0)),next=nextPeriodIn();
+  let pos=diffD(settings.lastPeriod||todayStr(-28),todayStr(0))%settings.cycleLen;
+  if(pos<0)pos+=settings.cycleLen;
+  const ovD=Math.round(settings.cycleLen-14),dToOv=((ovD-pos)+settings.cycleLen)%settings.cycleLen;
+  const phDesc={period:'Your body is shedding the uterine lining. Rest, stay warm, and nourish yourself with iron-rich foods.',follicular:'Estrogen is rising — energy levels often increase. Good time for new projects and social activities.',fertile:'Your body is preparing for ovulation. Estrogen peaks and you may feel your most confident and social.',ovulation:'Luteinizing hormone surges. Some people experience mild discomfort on one side.',pms:'Progesterone is falling. Be gentle with yourself — rest, reduce salt and caffeine, and prioritize sleep.'};
+  const ins=[
+    {i:'🩸',t:'Next period',d:next!==null?`Predicted in approximately ${next} day${next===1?'':'s'}, around ${(()=>{const nd=new Date();nd.setDate(nd.getDate()+next);return nd.toLocaleDateString('en',{month:'long',day:'numeric'})})()}.`:'Set your last period date in Settings to get predictions.'},
+    {i:'✨',t:'Ovulation window',d:dToOv<7?`Ovulation is predicted in ${dToOv} day${dToOv===1?'':'s'}. Your fertile window is the 5 days before and 1 day after.`:`Ovulation is expected in about ${dToOv} days.`},
+    {i:'💊',t:`You're in the ${p||'—'} phase`,d:phDesc[p]||'Log your cycle regularly for personalised insights.'},
+    {i:'🌡️',t:'Symptom tip',d:'Tracking symptoms regularly helps you spot patterns. If you notice unusual pain or heavy bleeding, consider speaking with a healthcare provider.'},
+    {i:'💧',t:'Hydration',d:'Drinking plenty of water helps with bloating, cramps, and overall energy throughout your cycle.'},
+    {i:'😴',t:'Sleep & cycle',d:'Sleep quality often shifts with your cycle. Many people sleep best in the follicular phase and more lightly during PMS.'},
+  ];
+  document.getElementById('insightList').innerHTML=ins.map(x=>`<div class="insight-card"><div class="insight-icon">${x.i}</div><div><div class="insight-title">${x.t}</div><div class="insight-desc">${x.d}</div></div></div>`).join('');
+}
+
+// Mystic
+function initMystic(){
+  document.getElementById('mysticDate').value=todayStr(0);
+  updateMoonCard(todayStr(0));
+}
+function updateMoonCard(ds){
+  const moon=moonPhase(ds);
+  document.getElementById('moonIcon').textContent=moon.e;
+  document.getElementById('moonPhaseName').textContent=moon.n;
+  const hash=ds.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const card=TAROT[hash%TAROT.length];
+  document.getElementById('tarotIcon').textContent=card.e;
+  document.getElementById('tarotName').textContent=card.name;
+}
+async function generateReading(){
+  const ds=document.getElementById('mysticDate').value||todayStr(0);
+  const moon=moonPhase(ds),hash=ds.split('').reduce((a,c)=>a+c.charCodeAt(0),0),card=TAROT[hash%TAROT.length];
+  const dateLabel=pDate(ds).toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  updateMoonCard(ds);
+  const loading='<span class="mystic-loading">✦ Receiving your reading… ✦</span>';
+  ['moonBody','astroBody','tarotBody'].forEach(id=>document.getElementById(id).innerHTML=loading);
+  document.getElementById('mysticReadBtn').disabled=true;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`You are a mystical poetic astrologer and tarot reader. Generate a beautiful reading for ${dateLabel}. Moon: ${moon.n} ${moon.e}. Tarot: ${card.name} ${card.e}. Cycle phase: ${cyclePhase(ds)||'unknown'}. Three short readings (2-3 sentences each). Respond ONLY as valid JSON no markdown: {"moon":"...","astro":"...","tarot":"..."}`}]})});
+    const data=await res.json();
+    const parsed=JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim());
+    document.getElementById('moonBody').textContent=parsed.moon;
+    document.getElementById('astroBody').textContent=parsed.astro;
+    document.getElementById('tarotBody').textContent=parsed.tarot;
+  }catch{
+    ['moonBody','astroBody','tarotBody'].forEach(id=>document.getElementById(id).textContent='The stars are quiet right now. Try again in a moment.');
+  }
+  document.getElementById('mysticReadBtn').disabled=false;
+}
+
+// Settings
+function loadSettings(){
+  document.getElementById('settingCycleLen').value=settings.cycleLen;
+  document.getElementById('settingPeriodLen').value=settings.periodLen;
+  document.getElementById('settingLastPeriod').value=settings.lastPeriod||'';
+}
+document.getElementById('saveSettings').onclick=()=>{
+  settings.cycleLen=parseInt(document.getElementById('settingCycleLen').value)||28;
+  settings.periodLen=parseInt(document.getElementById('settingPeriodLen').value)||5;
+  settings.lastPeriod=document.getElementById('settingLastPeriod').value||settings.lastPeriod;
+  store('luna_settings',settings);renderCal();renderPhaseStrip();renderHeaderPhase();showToast('✓ Settings saved!');
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify({settings,logs},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`luna-export-${todayStr(0)}.json`;a.click();
+};
+document.getElementById('clearBtn').onclick=()=>{
+  if(confirm('Delete all logs permanently? This cannot be undone.')){logs={};store('luna_logs',logs);showToast('All data cleared')}
+};
+
+// Nav
+function switchView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='stats')renderStats();
+  if(name==='insights')renderInsights();
+  if(name==='mystic')initMystic();
+  if(name==='settings')loadSettings();
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+// Init
+renderCal();
+renderPhaseStrip();
+renderHeaderPhase();
+renderInsights();
+selectDay(selDate);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
